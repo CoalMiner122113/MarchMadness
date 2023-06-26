@@ -1,6 +1,12 @@
 import mysql.connector as sql
 from mysql.connector import Error
 from objDef import team
+import os
+from os.path import join, dirname
+from dotenv import load_dotenv
+
+dotenv_path = join(dirname(__file__), ".env")
+load_dotenv(dotenv_path)
 
 ##Set up connection to MySQL server and marchMadness database
 def setup():
