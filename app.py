@@ -8,7 +8,13 @@ import pandas as pd
 import streamlit as st
 
 from app_logic.objDef import team as Team
-from sql.sqlHandler import getSeededBracket, getTeamStatsForYear
+from sql.sqlHandler import (
+    getMBBTeams,
+    getSeededBracket,
+    getTeamStatsForYear,
+    setupmbbteams,
+    updateTeamReferences,
+)
 
 
 st.set_page_config(page_title="March Madness", page_icon=":basketball:", layout="wide")
@@ -259,21 +265,38 @@ def _pending_games(payload: dict, source: str, round_index: int) -> List[dict]:
     return _build_next_games_from_winners(round_index, prev_winners)
 
 
+def _games_by_division(games: List[dict]) -> Dict[str, List[dict]]:
+    grouped: Dict[str, List[dict]] = {}
+    for game in games:
+        div = game.get("division", "Other")
+        grouped.setdefault(div, []).append(game)
+
+    ordered: Dict[str, List[dict]] = {}
+    for div in DIVISION_ORDER:
+        if div in grouped:
+            ordered[div] = grouped.pop(div)
+    for div, div_games in grouped.items():
+        ordered[div] = div_games
+    return ordered
+
+
 def _render_games_from_results(results: List[dict]):
     if not results:
         st.info("No games to display yet.")
         return
 
-    for game in results:
-        st.markdown(
-            f"""
-            <div class="game-card">
-                <div><b>{game['team1']}</b> vs <b>{game['team2']}</b></div>
-                <div class="winner">Winner: {game['winner']} ({game['win_prob']:.1%})</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    for division, div_games in _games_by_division(results).items():
+        with st.expander(division.upper(), expanded=False):
+            for i, game in enumerate(div_games, start=1):
+                st.markdown(
+                    f"""
+                    <div class="game-card">
+                        <div><b>Game {i}:</b> <b>{game['team1']}</b> vs <b>{game['team2']}</b></div>
+                        <div class="winner">Winner: {game['winner']} ({game['win_prob']:.1%})</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
 
 def _render_games_preview(games: List[dict]):
@@ -281,16 +304,17 @@ def _render_games_preview(games: List[dict]):
         st.info("No matchups available for this round.")
         return
 
-    for game in games:
-        st.markdown(
-            f"""
-            <div class="game-card">
-                <div><b>{game['team1']['team_name']}</b> vs <b>{game['team2']['team_name']}</b></div>
-                <div>Division: {game['division']}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    for division, div_games in _games_by_division(games).items():
+        with st.expander(division.upper(), expanded=False):
+            for i, game in enumerate(div_games, start=1):
+                st.markdown(
+                    f"""
+                    <div class="game-card">
+                        <div><b>Game {i}:</b> <b>{game['team1']['team_name']}</b> vs <b>{game['team2']['team_name']}</b></div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
 
 def view_seeding_page(payload: dict):
@@ -364,12 +388,59 @@ def past_tournaments_page():
     st.info("Historical tournament workflows can be added here. This section is scaffolded for the new hierarchy.")
 
 
-st.title("March Madness")
-menu = st.sidebar.selectbox("Hierarchy", ["Past Tournaments", "March Madness 2026"])
+def admin_update_team_references_page():
+    st.subheader("Update Team References")
+    st.caption("Edit team identity references in MBBTeams and run setup to refresh mappings.")
 
-if menu == "Past Tournaments":
-    past_tournaments_page()
-else:
+    year = st.number_input("Season Year", min_value=2002, max_value=2100, value=2026, step=1, key="admin_year")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Setup MBBTeams (KenPom + ESPN)", key="admin_setup_mbbteams"):
+            with st.spinner("Running setupmbbteams..."):
+                try:
+                    summary = setupmbbteams(int(year))
+                    st.success(
+                        f"Setup complete for {summary['year']}: KenPom rows={summary['kenpom_rows']}, ESPN rows={summary['espn_rows']}, mapped rows={summary['mapped_rows']}"
+                    )
+                except Exception as exc:
+                    st.error(f"Setup failed: {exc}")
+
+    try:
+        rows = getMBBTeams()
+    except Exception as exc:
+        st.error(f"Failed to load MBBTeams: {exc}")
+        return
+
+    if not rows:
+        st.info("No team rows found in MBBTeams.")
+        return
+
+    df = pd.DataFrame(rows)
+    cols = [c for c in ["TeamID", "KenPomName", "EspnID", "NcaaName"] if c in df.columns]
+    editable_df = df[cols].copy()
+
+    edited_df = st.data_editor(
+        editable_df,
+        use_container_width=True,
+        hide_index=True,
+        disabled=["TeamID"],
+        key="admin_team_reference_editor",
+    )
+
+    with c2:
+        if st.button("Save Team Reference Changes", key="admin_save_team_refs"):
+            try:
+                updateTeamReferences(edited_df.to_dict(orient="records"))
+                st.success("Team references saved.")
+            except Exception as exc:
+                st.error(f"Save failed: {exc}")
+
+
+st.title("March Madness")
+menu = st.sidebar.selectbox("Hierarchy", ["March Madness", "Past Tournaments", "Admin"])
+
+if menu == "March Madness":
     year = 2026
     payload = load_session_payload(year)
     subpage = st.sidebar.selectbox("March Madness 2026", ["View Seeding", "Run Simulation"])
@@ -380,3 +451,9 @@ else:
         view_seeding_page(payload)
     else:
         run_simulation_page(payload)
+elif menu == "Past Tournaments":
+    past_tournaments_page()
+elif menu == "Admin":
+    admin_subpage = st.sidebar.selectbox("Admin", ["Update Team References"])
+    if admin_subpage == "Update Team References":
+        admin_update_team_references_page()

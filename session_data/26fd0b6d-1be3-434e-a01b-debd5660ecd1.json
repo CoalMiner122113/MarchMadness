@@ -1,0 +1,2453 @@
+{
+  "year": 2026,
+  "seeding": {
+    "kenpom": [
+      {
+        "division": "South",
+        "seed": 1,
+        "team_id": 1,
+        "team_name": "Duke",
+        "adj_em": 40.6,
+        "luck": 0.03,
+        "sos": 14.19
+      },
+      {
+        "division": "South",
+        "seed": 2,
+        "team_id": 2,
+        "team_name": "Michigan",
+        "adj_em": 39.38,
+        "luck": 0.036,
+        "sos": 15.69
+      },
+      {
+        "division": "South",
+        "seed": 3,
+        "team_id": 3,
+        "team_name": "Arizona",
+        "adj_em": 37.27,
+        "luck": 0.011,
+        "sos": 14.16
+      },
+      {
+        "division": "South",
+        "seed": 4,
+        "team_id": 4,
+        "team_name": "Florida",
+        "adj_em": 35.28,
+        "luck": -0.051,
+        "sos": 15.67
+      },
+      {
+        "division": "South",
+        "seed": 5,
+        "team_id": 5,
+        "team_name": "Illinois",
+        "adj_em": 33.19,
+        "luck": -0.044,
+        "sos": 13.78
+      },
+      {
+        "division": "South",
+        "seed": 6,
+        "team_id": 6,
+        "team_name": "Houston",
+        "adj_em": 32.43,
+        "luck": 0.002,
+        "sos": 12.37
+      },
+      {
+        "division": "South",
+        "seed": 7,
+        "team_id": 7,
+        "team_name": "Iowa St.",
+        "adj_em": 29.92,
+        "luck": 0.006,
+        "sos": 11.54
+      },
+      {
+        "division": "South",
+        "seed": 8,
+        "team_id": 8,
+        "team_name": "Purdue",
+        "adj_em": 29.39,
+        "luck": -0.021,
+        "sos": 15.03
+      },
+      {
+        "division": "South",
+        "seed": 9,
+        "team_id": 9,
+        "team_name": "Michigan St.",
+        "adj_em": 28.93,
+        "luck": 0.027,
+        "sos": 12.83
+      },
+      {
+        "division": "South",
+        "seed": 10,
+        "team_id": 10,
+        "team_name": "Gonzaga",
+        "adj_em": 28.37,
+        "luck": 0.067,
+        "sos": 6.01
+      },
+      {
+        "division": "South",
+        "seed": 11,
+        "team_id": 11,
+        "team_name": "Connecticut",
+        "adj_em": 28.21,
+        "luck": 0.052,
+        "sos": 11.99
+      },
+      {
+        "division": "South",
+        "seed": 12,
+        "team_id": 12,
+        "team_name": "Nebraska",
+        "adj_em": 26.91,
+        "luck": 0.024,
+        "sos": 10.82
+      },
+      {
+        "division": "South",
+        "seed": 13,
+        "team_id": 13,
+        "team_name": "Vanderbilt",
+        "adj_em": 26.46,
+        "luck": 0.02,
+        "sos": 13.36
+      },
+      {
+        "division": "South",
+        "seed": 14,
+        "team_id": 14,
+        "team_name": "Texas Tech",
+        "adj_em": 26.14,
+        "luck": -0.002,
+        "sos": 15.4
+      },
+      {
+        "division": "South",
+        "seed": 15,
+        "team_id": 15,
+        "team_name": "Alabama",
+        "adj_em": 26.1,
+        "luck": 0.038,
+        "sos": 17.06
+      },
+      {
+        "division": "South",
+        "seed": 16,
+        "team_id": 16,
+        "team_name": "Tennessee",
+        "adj_em": 26.1,
+        "luck": -0.058,
+        "sos": 14.45
+      },
+      {
+        "division": "East",
+        "seed": 1,
+        "team_id": 17,
+        "team_name": "Louisville",
+        "adj_em": 26.08,
+        "luck": -0.016,
+        "sos": 12.42
+      },
+      {
+        "division": "East",
+        "seed": 2,
+        "team_id": 18,
+        "team_name": "Arkansas",
+        "adj_em": 25.95,
+        "luck": 0.029,
+        "sos": 14.81
+      },
+      {
+        "division": "East",
+        "seed": 3,
+        "team_id": 19,
+        "team_name": "Kansas",
+        "adj_em": 25.38,
+        "luck": 0.038,
+        "sos": 16.71
+      },
+      {
+        "division": "East",
+        "seed": 4,
+        "team_id": 20,
+        "team_name": "Virginia",
+        "adj_em": 25.22,
+        "luck": 0.071,
+        "sos": 8.64
+      },
+      {
+        "division": "East",
+        "seed": 5,
+        "team_id": 21,
+        "team_name": "St. John's",
+        "adj_em": 24.42,
+        "luck": 0.06,
+        "sos": 11.34
+      },
+      {
+        "division": "East",
+        "seed": 6,
+        "team_id": 22,
+        "team_name": "Saint Mary's",
+        "adj_em": 23.62,
+        "luck": 0.024,
+        "sos": 4.94
+      },
+      {
+        "division": "East",
+        "seed": 7,
+        "team_id": 23,
+        "team_name": "Iowa",
+        "adj_em": 22.61,
+        "luck": -0.044,
+        "sos": 10.54
+      },
+      {
+        "division": "East",
+        "seed": 8,
+        "team_id": 24,
+        "team_name": "Wisconsin",
+        "adj_em": 22.57,
+        "luck": 0.038,
+        "sos": 12.65
+      },
+      {
+        "division": "East",
+        "seed": 9,
+        "team_id": 25,
+        "team_name": "BYU",
+        "adj_em": 22.38,
+        "luck": -0.011,
+        "sos": 14.42
+      },
+      {
+        "division": "East",
+        "seed": 10,
+        "team_id": 26,
+        "team_name": "Ohio St.",
+        "adj_em": 21.65,
+        "luck": -0.029,
+        "sos": 12.82
+      },
+      {
+        "division": "East",
+        "seed": 11,
+        "team_id": 27,
+        "team_name": "Kentucky",
+        "adj_em": 21.35,
+        "luck": -0.029,
+        "sos": 15.77
+      },
+      {
+        "division": "East",
+        "seed": 12,
+        "team_id": 33,
+        "team_name": "UCLA",
+        "adj_em": 21.26,
+        "luck": 0.015,
+        "sos": 11.66
+      },
+      {
+        "division": "East",
+        "seed": 13,
+        "team_id": 28,
+        "team_name": "North Carolina",
+        "adj_em": 21.11,
+        "luck": 0.077,
+        "sos": 11.56
+      },
+      {
+        "division": "East",
+        "seed": 14,
+        "team_id": 29,
+        "team_name": "Miami FL",
+        "adj_em": 21.1,
+        "luck": 0.001,
+        "sos": 6.78
+      },
+      {
+        "division": "East",
+        "seed": 15,
+        "team_id": 30,
+        "team_name": "Georgia",
+        "adj_em": 21.0,
+        "luck": 0.011,
+        "sos": 11.08
+      },
+      {
+        "division": "East",
+        "seed": 16,
+        "team_id": 31,
+        "team_name": "Villanova",
+        "adj_em": 20.89,
+        "luck": 0.07,
+        "sos": 10.49
+      },
+      {
+        "division": "West",
+        "seed": 1,
+        "team_id": 32,
+        "team_name": "Texas",
+        "adj_em": 19.89,
+        "luck": -0.076,
+        "sos": 14.08
+      },
+      {
+        "division": "West",
+        "seed": 2,
+        "team_id": 34,
+        "team_name": "Texas A&M",
+        "adj_em": 19.73,
+        "luck": -0.005,
+        "sos": 10.98
+      },
+      {
+        "division": "West",
+        "seed": 3,
+        "team_id": 35,
+        "team_name": "N.C. State",
+        "adj_em": 19.62,
+        "luck": -0.025,
+        "sos": 11.98
+      },
+      {
+        "division": "West",
+        "seed": 4,
+        "team_id": 36,
+        "team_name": "Utah St.",
+        "adj_em": 19.59,
+        "luck": 0.063,
+        "sos": 7.12
+      },
+      {
+        "division": "West",
+        "seed": 5,
+        "team_id": 37,
+        "team_name": "Santa Clara",
+        "adj_em": 19.33,
+        "luck": 0.008,
+        "sos": 5.16
+      },
+      {
+        "division": "West",
+        "seed": 6,
+        "team_id": 38,
+        "team_name": "Clemson",
+        "adj_em": 18.9,
+        "luck": -0.001,
+        "sos": 9.68
+      },
+      {
+        "division": "West",
+        "seed": 7,
+        "team_id": 39,
+        "team_name": "Auburn",
+        "adj_em": 18.75,
+        "luck": -0.051,
+        "sos": 16.9
+      },
+      {
+        "division": "West",
+        "seed": 8,
+        "team_id": 40,
+        "team_name": "Saint Louis",
+        "adj_em": 18.62,
+        "luck": 0.043,
+        "sos": 0.64
+      },
+      {
+        "division": "West",
+        "seed": 9,
+        "team_id": 41,
+        "team_name": "Indiana",
+        "adj_em": 18.08,
+        "luck": -0.035,
+        "sos": 11.99
+      },
+      {
+        "division": "West",
+        "seed": 10,
+        "team_id": 42,
+        "team_name": "Cincinnati",
+        "adj_em": 17.82,
+        "luck": -0.069,
+        "sos": 11.6
+      },
+      {
+        "division": "West",
+        "seed": 11,
+        "team_id": 43,
+        "team_name": "SMU",
+        "adj_em": 17.49,
+        "luck": -0.033,
+        "sos": 11.1
+      },
+      {
+        "division": "West",
+        "seed": 12,
+        "team_id": 44,
+        "team_name": "TCU",
+        "adj_em": 17.45,
+        "luck": 0.01,
+        "sos": 10.79
+      },
+      {
+        "division": "West",
+        "seed": 13,
+        "team_id": 45,
+        "team_name": "VCU",
+        "adj_em": 16.85,
+        "luck": -0.019,
+        "sos": 3.52
+      },
+      {
+        "division": "West",
+        "seed": 14,
+        "team_id": 48,
+        "team_name": "Oklahoma",
+        "adj_em": 16.82,
+        "luck": -0.068,
+        "sos": 13.33
+      },
+      {
+        "division": "West",
+        "seed": 15,
+        "team_id": 46,
+        "team_name": "San Diego St.",
+        "adj_em": 16.66,
+        "luck": 0.004,
+        "sos": 8.16
+      },
+      {
+        "division": "West",
+        "seed": 16,
+        "team_id": 47,
+        "team_name": "Baylor",
+        "adj_em": 16.29,
+        "luck": -0.074,
+        "sos": 14.31
+      },
+      {
+        "division": "Midwest",
+        "seed": 1,
+        "team_id": 49,
+        "team_name": "New Mexico",
+        "adj_em": 15.87,
+        "luck": -0.021,
+        "sos": 6.11
+      },
+      {
+        "division": "Midwest",
+        "seed": 2,
+        "team_id": 50,
+        "team_name": "Missouri",
+        "adj_em": 15.53,
+        "luck": 0.055,
+        "sos": 11.42
+      },
+      {
+        "division": "Midwest",
+        "seed": 3,
+        "team_id": 52,
+        "team_name": "Seton Hall",
+        "adj_em": 15.25,
+        "luck": -0.034,
+        "sos": 8.52
+      },
+      {
+        "division": "Midwest",
+        "seed": 4,
+        "team_id": 53,
+        "team_name": "UCF",
+        "adj_em": 15.07,
+        "luck": 0.084,
+        "sos": 11.24
+      },
+      {
+        "division": "Midwest",
+        "seed": 5,
+        "team_id": 54,
+        "team_name": "South Florida",
+        "adj_em": 15.01,
+        "luck": -0.024,
+        "sos": 3.84
+      },
+      {
+        "division": "Midwest",
+        "seed": 6,
+        "team_id": 51,
+        "team_name": "Washington",
+        "adj_em": 14.96,
+        "luck": -0.105,
+        "sos": 11.91
+      },
+      {
+        "division": "Midwest",
+        "seed": 7,
+        "team_id": 55,
+        "team_name": "Tulsa",
+        "adj_em": 14.68,
+        "luck": 0.004,
+        "sos": 0.69
+      },
+      {
+        "division": "Midwest",
+        "seed": 8,
+        "team_id": 56,
+        "team_name": "Boise St.",
+        "adj_em": 14.32,
+        "luck": 0.039,
+        "sos": 9.26
+      },
+      {
+        "division": "Midwest",
+        "seed": 9,
+        "team_id": 57,
+        "team_name": "Virginia Tech",
+        "adj_em": 14.07,
+        "luck": 0.001,
+        "sos": 10.28
+      },
+      {
+        "division": "Midwest",
+        "seed": 10,
+        "team_id": 58,
+        "team_name": "West Virginia",
+        "adj_em": 14.0,
+        "luck": -0.033,
+        "sos": 9.11
+      },
+      {
+        "division": "Midwest",
+        "seed": 11,
+        "team_id": 59,
+        "team_name": "Stanford",
+        "adj_em": 13.67,
+        "luck": 0.048,
+        "sos": 9.24
+      },
+      {
+        "division": "Midwest",
+        "seed": 12,
+        "team_id": 60,
+        "team_name": "Grand Canyon",
+        "adj_em": 13.5,
+        "luck": -0.056,
+        "sos": 3.89
+      },
+      {
+        "division": "Midwest",
+        "seed": 13,
+        "team_id": 61,
+        "team_name": "Akron",
+        "adj_em": 13.44,
+        "luck": -0.006,
+        "sos": -3.89
+      },
+      {
+        "division": "Midwest",
+        "seed": 14,
+        "team_id": 62,
+        "team_name": "Arizona St.",
+        "adj_em": 13.19,
+        "luck": 0.031,
+        "sos": 14.19
+      },
+      {
+        "division": "Midwest",
+        "seed": 15,
+        "team_id": 63,
+        "team_name": "LSU",
+        "adj_em": 13.17,
+        "luck": -0.082,
+        "sos": 10.9
+      },
+      {
+        "division": "Midwest",
+        "seed": 16,
+        "team_id": 66,
+        "team_name": "Colorado",
+        "adj_em": 12.55,
+        "luck": 0.034,
+        "sos": 11.29
+      }
+    ],
+    "bracketology": [
+      {
+        "division": "South",
+        "seed": 1,
+        "team_id": 1,
+        "team_name": "Duke",
+        "adj_em": 40.6,
+        "luck": 0.03,
+        "sos": 14.19
+      },
+      {
+        "division": "South",
+        "seed": 2,
+        "team_id": 2,
+        "team_name": "Michigan",
+        "adj_em": 39.38,
+        "luck": 0.036,
+        "sos": 15.69
+      },
+      {
+        "division": "South",
+        "seed": 3,
+        "team_id": 3,
+        "team_name": "Arizona",
+        "adj_em": 37.27,
+        "luck": 0.011,
+        "sos": 14.16
+      },
+      {
+        "division": "South",
+        "seed": 4,
+        "team_id": 4,
+        "team_name": "Florida",
+        "adj_em": 35.28,
+        "luck": -0.051,
+        "sos": 15.67
+      },
+      {
+        "division": "South",
+        "seed": 5,
+        "team_id": 5,
+        "team_name": "Illinois",
+        "adj_em": 33.19,
+        "luck": -0.044,
+        "sos": 13.78
+      },
+      {
+        "division": "South",
+        "seed": 6,
+        "team_id": 6,
+        "team_name": "Houston",
+        "adj_em": 32.43,
+        "luck": 0.002,
+        "sos": 12.37
+      },
+      {
+        "division": "South",
+        "seed": 7,
+        "team_id": 7,
+        "team_name": "Iowa St.",
+        "adj_em": 29.92,
+        "luck": 0.006,
+        "sos": 11.54
+      },
+      {
+        "division": "South",
+        "seed": 8,
+        "team_id": 8,
+        "team_name": "Purdue",
+        "adj_em": 29.39,
+        "luck": -0.021,
+        "sos": 15.03
+      },
+      {
+        "division": "South",
+        "seed": 9,
+        "team_id": 9,
+        "team_name": "Michigan St.",
+        "adj_em": 28.93,
+        "luck": 0.027,
+        "sos": 12.83
+      },
+      {
+        "division": "South",
+        "seed": 10,
+        "team_id": 10,
+        "team_name": "Gonzaga",
+        "adj_em": 28.37,
+        "luck": 0.067,
+        "sos": 6.01
+      },
+      {
+        "division": "South",
+        "seed": 11,
+        "team_id": 11,
+        "team_name": "Connecticut",
+        "adj_em": 28.21,
+        "luck": 0.052,
+        "sos": 11.99
+      },
+      {
+        "division": "South",
+        "seed": 12,
+        "team_id": 12,
+        "team_name": "Nebraska",
+        "adj_em": 26.91,
+        "luck": 0.024,
+        "sos": 10.82
+      },
+      {
+        "division": "South",
+        "seed": 13,
+        "team_id": 13,
+        "team_name": "Vanderbilt",
+        "adj_em": 26.46,
+        "luck": 0.02,
+        "sos": 13.36
+      },
+      {
+        "division": "South",
+        "seed": 14,
+        "team_id": 14,
+        "team_name": "Texas Tech",
+        "adj_em": 26.14,
+        "luck": -0.002,
+        "sos": 15.4
+      },
+      {
+        "division": "South",
+        "seed": 15,
+        "team_id": 15,
+        "team_name": "Alabama",
+        "adj_em": 26.1,
+        "luck": 0.038,
+        "sos": 17.06
+      },
+      {
+        "division": "South",
+        "seed": 16,
+        "team_id": 16,
+        "team_name": "Tennessee",
+        "adj_em": 26.1,
+        "luck": -0.058,
+        "sos": 14.45
+      },
+      {
+        "division": "East",
+        "seed": 1,
+        "team_id": 17,
+        "team_name": "Louisville",
+        "adj_em": 26.08,
+        "luck": -0.016,
+        "sos": 12.42
+      },
+      {
+        "division": "East",
+        "seed": 2,
+        "team_id": 18,
+        "team_name": "Arkansas",
+        "adj_em": 25.95,
+        "luck": 0.029,
+        "sos": 14.81
+      },
+      {
+        "division": "East",
+        "seed": 3,
+        "team_id": 19,
+        "team_name": "Kansas",
+        "adj_em": 25.38,
+        "luck": 0.038,
+        "sos": 16.71
+      },
+      {
+        "division": "East",
+        "seed": 4,
+        "team_id": 20,
+        "team_name": "Virginia",
+        "adj_em": 25.22,
+        "luck": 0.071,
+        "sos": 8.64
+      },
+      {
+        "division": "East",
+        "seed": 5,
+        "team_id": 21,
+        "team_name": "St. John's",
+        "adj_em": 24.42,
+        "luck": 0.06,
+        "sos": 11.34
+      },
+      {
+        "division": "East",
+        "seed": 6,
+        "team_id": 22,
+        "team_name": "Saint Mary's",
+        "adj_em": 23.62,
+        "luck": 0.024,
+        "sos": 4.94
+      },
+      {
+        "division": "East",
+        "seed": 7,
+        "team_id": 23,
+        "team_name": "Iowa",
+        "adj_em": 22.61,
+        "luck": -0.044,
+        "sos": 10.54
+      },
+      {
+        "division": "East",
+        "seed": 8,
+        "team_id": 24,
+        "team_name": "Wisconsin",
+        "adj_em": 22.57,
+        "luck": 0.038,
+        "sos": 12.65
+      },
+      {
+        "division": "East",
+        "seed": 9,
+        "team_id": 25,
+        "team_name": "BYU",
+        "adj_em": 22.38,
+        "luck": -0.011,
+        "sos": 14.42
+      },
+      {
+        "division": "East",
+        "seed": 10,
+        "team_id": 26,
+        "team_name": "Ohio St.",
+        "adj_em": 21.65,
+        "luck": -0.029,
+        "sos": 12.82
+      },
+      {
+        "division": "East",
+        "seed": 11,
+        "team_id": 27,
+        "team_name": "Kentucky",
+        "adj_em": 21.35,
+        "luck": -0.029,
+        "sos": 15.77
+      },
+      {
+        "division": "East",
+        "seed": 12,
+        "team_id": 33,
+        "team_name": "UCLA",
+        "adj_em": 21.26,
+        "luck": 0.015,
+        "sos": 11.66
+      },
+      {
+        "division": "East",
+        "seed": 13,
+        "team_id": 28,
+        "team_name": "North Carolina",
+        "adj_em": 21.11,
+        "luck": 0.077,
+        "sos": 11.56
+      },
+      {
+        "division": "East",
+        "seed": 14,
+        "team_id": 29,
+        "team_name": "Miami FL",
+        "adj_em": 21.1,
+        "luck": 0.001,
+        "sos": 6.78
+      },
+      {
+        "division": "East",
+        "seed": 15,
+        "team_id": 30,
+        "team_name": "Georgia",
+        "adj_em": 21.0,
+        "luck": 0.011,
+        "sos": 11.08
+      },
+      {
+        "division": "East",
+        "seed": 16,
+        "team_id": 31,
+        "team_name": "Villanova",
+        "adj_em": 20.89,
+        "luck": 0.07,
+        "sos": 10.49
+      },
+      {
+        "division": "West",
+        "seed": 1,
+        "team_id": 32,
+        "team_name": "Texas",
+        "adj_em": 19.89,
+        "luck": -0.076,
+        "sos": 14.08
+      },
+      {
+        "division": "West",
+        "seed": 2,
+        "team_id": 34,
+        "team_name": "Texas A&M",
+        "adj_em": 19.73,
+        "luck": -0.005,
+        "sos": 10.98
+      },
+      {
+        "division": "West",
+        "seed": 3,
+        "team_id": 35,
+        "team_name": "N.C. State",
+        "adj_em": 19.62,
+        "luck": -0.025,
+        "sos": 11.98
+      },
+      {
+        "division": "West",
+        "seed": 4,
+        "team_id": 36,
+        "team_name": "Utah St.",
+        "adj_em": 19.59,
+        "luck": 0.063,
+        "sos": 7.12
+      },
+      {
+        "division": "West",
+        "seed": 5,
+        "team_id": 37,
+        "team_name": "Santa Clara",
+        "adj_em": 19.33,
+        "luck": 0.008,
+        "sos": 5.16
+      },
+      {
+        "division": "West",
+        "seed": 6,
+        "team_id": 38,
+        "team_name": "Clemson",
+        "adj_em": 18.9,
+        "luck": -0.001,
+        "sos": 9.68
+      },
+      {
+        "division": "West",
+        "seed": 7,
+        "team_id": 39,
+        "team_name": "Auburn",
+        "adj_em": 18.75,
+        "luck": -0.051,
+        "sos": 16.9
+      },
+      {
+        "division": "West",
+        "seed": 8,
+        "team_id": 40,
+        "team_name": "Saint Louis",
+        "adj_em": 18.62,
+        "luck": 0.043,
+        "sos": 0.64
+      },
+      {
+        "division": "West",
+        "seed": 9,
+        "team_id": 41,
+        "team_name": "Indiana",
+        "adj_em": 18.08,
+        "luck": -0.035,
+        "sos": 11.99
+      },
+      {
+        "division": "West",
+        "seed": 10,
+        "team_id": 42,
+        "team_name": "Cincinnati",
+        "adj_em": 17.82,
+        "luck": -0.069,
+        "sos": 11.6
+      },
+      {
+        "division": "West",
+        "seed": 11,
+        "team_id": 43,
+        "team_name": "SMU",
+        "adj_em": 17.49,
+        "luck": -0.033,
+        "sos": 11.1
+      },
+      {
+        "division": "West",
+        "seed": 12,
+        "team_id": 44,
+        "team_name": "TCU",
+        "adj_em": 17.45,
+        "luck": 0.01,
+        "sos": 10.79
+      },
+      {
+        "division": "West",
+        "seed": 13,
+        "team_id": 45,
+        "team_name": "VCU",
+        "adj_em": 16.85,
+        "luck": -0.019,
+        "sos": 3.52
+      },
+      {
+        "division": "West",
+        "seed": 14,
+        "team_id": 48,
+        "team_name": "Oklahoma",
+        "adj_em": 16.82,
+        "luck": -0.068,
+        "sos": 13.33
+      },
+      {
+        "division": "West",
+        "seed": 15,
+        "team_id": 46,
+        "team_name": "San Diego St.",
+        "adj_em": 16.66,
+        "luck": 0.004,
+        "sos": 8.16
+      },
+      {
+        "division": "West",
+        "seed": 16,
+        "team_id": 47,
+        "team_name": "Baylor",
+        "adj_em": 16.29,
+        "luck": -0.074,
+        "sos": 14.31
+      },
+      {
+        "division": "Midwest",
+        "seed": 1,
+        "team_id": 49,
+        "team_name": "New Mexico",
+        "adj_em": 15.87,
+        "luck": -0.021,
+        "sos": 6.11
+      },
+      {
+        "division": "Midwest",
+        "seed": 2,
+        "team_id": 50,
+        "team_name": "Missouri",
+        "adj_em": 15.53,
+        "luck": 0.055,
+        "sos": 11.42
+      },
+      {
+        "division": "Midwest",
+        "seed": 3,
+        "team_id": 52,
+        "team_name": "Seton Hall",
+        "adj_em": 15.25,
+        "luck": -0.034,
+        "sos": 8.52
+      },
+      {
+        "division": "Midwest",
+        "seed": 4,
+        "team_id": 53,
+        "team_name": "UCF",
+        "adj_em": 15.07,
+        "luck": 0.084,
+        "sos": 11.24
+      },
+      {
+        "division": "Midwest",
+        "seed": 5,
+        "team_id": 54,
+        "team_name": "South Florida",
+        "adj_em": 15.01,
+        "luck": -0.024,
+        "sos": 3.84
+      },
+      {
+        "division": "Midwest",
+        "seed": 6,
+        "team_id": 51,
+        "team_name": "Washington",
+        "adj_em": 14.96,
+        "luck": -0.105,
+        "sos": 11.91
+      },
+      {
+        "division": "Midwest",
+        "seed": 7,
+        "team_id": 55,
+        "team_name": "Tulsa",
+        "adj_em": 14.68,
+        "luck": 0.004,
+        "sos": 0.69
+      },
+      {
+        "division": "Midwest",
+        "seed": 8,
+        "team_id": 56,
+        "team_name": "Boise St.",
+        "adj_em": 14.32,
+        "luck": 0.039,
+        "sos": 9.26
+      },
+      {
+        "division": "Midwest",
+        "seed": 9,
+        "team_id": 57,
+        "team_name": "Virginia Tech",
+        "adj_em": 14.07,
+        "luck": 0.001,
+        "sos": 10.28
+      },
+      {
+        "division": "Midwest",
+        "seed": 10,
+        "team_id": 58,
+        "team_name": "West Virginia",
+        "adj_em": 14.0,
+        "luck": -0.033,
+        "sos": 9.11
+      },
+      {
+        "division": "Midwest",
+        "seed": 11,
+        "team_id": 59,
+        "team_name": "Stanford",
+        "adj_em": 13.67,
+        "luck": 0.048,
+        "sos": 9.24
+      },
+      {
+        "division": "Midwest",
+        "seed": 12,
+        "team_id": 60,
+        "team_name": "Grand Canyon",
+        "adj_em": 13.5,
+        "luck": -0.056,
+        "sos": 3.89
+      },
+      {
+        "division": "Midwest",
+        "seed": 13,
+        "team_id": 61,
+        "team_name": "Akron",
+        "adj_em": 13.44,
+        "luck": -0.006,
+        "sos": -3.89
+      },
+      {
+        "division": "Midwest",
+        "seed": 14,
+        "team_id": 62,
+        "team_name": "Arizona St.",
+        "adj_em": 13.19,
+        "luck": 0.031,
+        "sos": 14.19
+      },
+      {
+        "division": "Midwest",
+        "seed": 15,
+        "team_id": 63,
+        "team_name": "LSU",
+        "adj_em": 13.17,
+        "luck": -0.082,
+        "sos": 10.9
+      },
+      {
+        "division": "Midwest",
+        "seed": 16,
+        "team_id": 66,
+        "team_name": "Colorado",
+        "adj_em": 12.55,
+        "luck": 0.034,
+        "sos": 11.29
+      }
+    ]
+  },
+  "simulation": {
+    "source": "kenpom",
+    "completed_rounds": 6,
+    "results": {
+      "Round of 64": [
+        {
+          "division": "South",
+          "team1": "Duke",
+          "team2": "Tennessee",
+          "winner": "Tennessee",
+          "loser": "Duke",
+          "win_prob": 0.4498
+        },
+        {
+          "division": "South",
+          "team1": "Purdue",
+          "team2": "Michigan St.",
+          "winner": "Michigan St.",
+          "loser": "Purdue",
+          "win_prob": 0.5006
+        },
+        {
+          "division": "South",
+          "team1": "Illinois",
+          "team2": "Nebraska",
+          "winner": "Nebraska",
+          "loser": "Illinois",
+          "win_prob": 0.4781
+        },
+        {
+          "division": "South",
+          "team1": "Florida",
+          "team2": "Vanderbilt",
+          "winner": "Vanderbilt",
+          "loser": "Florida",
+          "win_prob": 0.4695
+        },
+        {
+          "division": "South",
+          "team1": "Houston",
+          "team2": "Connecticut",
+          "winner": "Connecticut",
+          "loser": "Houston",
+          "win_prob": 0.4917
+        },
+        {
+          "division": "South",
+          "team1": "Arizona",
+          "team2": "Texas Tech",
+          "winner": "Texas Tech",
+          "loser": "Arizona",
+          "win_prob": 0.4613
+        },
+        {
+          "division": "South",
+          "team1": "Iowa St.",
+          "team2": "Gonzaga",
+          "winner": "Gonzaga",
+          "loser": "Iowa St.",
+          "win_prob": 0.4985
+        },
+        {
+          "division": "South",
+          "team1": "Michigan",
+          "team2": "Alabama",
+          "winner": "Alabama",
+          "loser": "Michigan",
+          "win_prob": 0.46
+        },
+        {
+          "division": "East",
+          "team1": "Louisville",
+          "team2": "Villanova",
+          "winner": "Louisville",
+          "loser": "Villanova",
+          "win_prob": 0.5128
+        },
+        {
+          "division": "East",
+          "team1": "Wisconsin",
+          "team2": "BYU",
+          "winner": "BYU",
+          "loser": "Wisconsin",
+          "win_prob": 0.5007
+        },
+        {
+          "division": "East",
+          "team1": "St. John's",
+          "team2": "UCLA",
+          "winner": "UCLA",
+          "loser": "St. John's",
+          "win_prob": 0.4894
+        },
+        {
+          "division": "East",
+          "team1": "Virginia",
+          "team2": "North Carolina",
+          "winner": "North Carolina",
+          "loser": "Virginia",
+          "win_prob": 0.4969
+        },
+        {
+          "division": "East",
+          "team1": "Saint Mary's",
+          "team2": "Kentucky",
+          "winner": "Saint Mary's",
+          "loser": "Kentucky",
+          "win_prob": 0.4988
+        },
+        {
+          "division": "East",
+          "team1": "Kansas",
+          "team2": "Miami FL",
+          "winner": "Kansas",
+          "loser": "Miami FL",
+          "win_prob": 0.5263
+        },
+        {
+          "division": "East",
+          "team1": "Iowa",
+          "team2": "Ohio St.",
+          "winner": "Iowa",
+          "loser": "Ohio St.",
+          "win_prob": 0.502
+        },
+        {
+          "division": "East",
+          "team1": "Arkansas",
+          "team2": "Georgia",
+          "winner": "Arkansas",
+          "loser": "Georgia",
+          "win_prob": 0.5216
+        },
+        {
+          "division": "West",
+          "team1": "Texas",
+          "team2": "Baylor",
+          "winner": "Baylor",
+          "loser": "Texas",
+          "win_prob": 0.4843
+        },
+        {
+          "division": "West",
+          "team1": "Saint Louis",
+          "team2": "Indiana",
+          "winner": "Saint Louis",
+          "loser": "Indiana",
+          "win_prob": 0.4846
+        },
+        {
+          "division": "West",
+          "team1": "Santa Clara",
+          "team2": "TCU",
+          "winner": "Santa Clara",
+          "loser": "TCU",
+          "win_prob": 0.5003
+        },
+        {
+          "division": "West",
+          "team1": "Utah St.",
+          "team2": "VCU",
+          "winner": "VCU",
+          "loser": "Utah St.",
+          "win_prob": 0.4821
+        },
+        {
+          "division": "West",
+          "team1": "Clemson",
+          "team2": "SMU",
+          "winner": "SMU",
+          "loser": "Clemson",
+          "win_prob": 0.4951
+        },
+        {
+          "division": "West",
+          "team1": "N.C. State",
+          "team2": "Oklahoma",
+          "winner": "Oklahoma",
+          "loser": "N.C. State",
+          "win_prob": 0.4888
+        },
+        {
+          "division": "West",
+          "team1": "Auburn",
+          "team2": "Cincinnati",
+          "winner": "Cincinnati",
+          "loser": "Auburn",
+          "win_prob": 0.4914
+        },
+        {
+          "division": "West",
+          "team1": "Texas A&M",
+          "team2": "San Diego St.",
+          "winner": "San Diego St.",
+          "loser": "Texas A&M",
+          "win_prob": 0.4838
+        },
+        {
+          "division": "Midwest",
+          "team1": "New Mexico",
+          "team2": "Colorado",
+          "winner": "Colorado",
+          "loser": "New Mexico",
+          "win_prob": 0.4951
+        },
+        {
+          "division": "Midwest",
+          "team1": "Boise St.",
+          "team2": "Virginia Tech",
+          "winner": "Virginia Tech",
+          "loser": "Boise St.",
+          "win_prob": 0.5001
+        },
+        {
+          "division": "Midwest",
+          "team1": "South Florida",
+          "team2": "Grand Canyon",
+          "winner": "Grand Canyon",
+          "loser": "South Florida",
+          "win_prob": 0.4926
+        },
+        {
+          "division": "Midwest",
+          "team1": "UCF",
+          "team2": "Akron",
+          "winner": "UCF",
+          "loser": "Akron",
+          "win_prob": 0.5489
+        },
+        {
+          "division": "Midwest",
+          "team1": "Washington",
+          "team2": "Stanford",
+          "winner": "Washington",
+          "loser": "Stanford",
+          "win_prob": 0.5022
+        },
+        {
+          "division": "Midwest",
+          "team1": "Seton Hall",
+          "team2": "Arizona St.",
+          "winner": "Arizona St.",
+          "loser": "Seton Hall",
+          "win_prob": 0.5005
+        },
+        {
+          "division": "Midwest",
+          "team1": "Tulsa",
+          "team2": "West Virginia",
+          "winner": "Tulsa",
+          "loser": "West Virginia",
+          "win_prob": 0.4874
+        },
+        {
+          "division": "Midwest",
+          "team1": "Missouri",
+          "team2": "LSU",
+          "winner": "Missouri",
+          "loser": "LSU",
+          "win_prob": 0.5118
+        }
+      ],
+      "Round of 32": [
+        {
+          "division": "South",
+          "team1": "Tennessee",
+          "team2": "Michigan St.",
+          "winner": "Tennessee",
+          "loser": "Michigan St.",
+          "win_prob": 0.4905
+        },
+        {
+          "division": "South",
+          "team1": "Nebraska",
+          "team2": "Vanderbilt",
+          "winner": "Nebraska",
+          "loser": "Vanderbilt",
+          "win_prob": 0.4997
+        },
+        {
+          "division": "South",
+          "team1": "Connecticut",
+          "team2": "Texas Tech",
+          "winner": "Connecticut",
+          "loser": "Texas Tech",
+          "win_prob": 0.5053
+        },
+        {
+          "division": "South",
+          "team1": "Gonzaga",
+          "team2": "Alabama",
+          "winner": "Gonzaga",
+          "loser": "Alabama",
+          "win_prob": 0.4993
+        },
+        {
+          "division": "East",
+          "team1": "Louisville",
+          "team2": "BYU",
+          "winner": "BYU",
+          "loser": "Louisville",
+          "win_prob": 0.4868
+        },
+        {
+          "division": "East",
+          "team1": "UCLA",
+          "team2": "North Carolina",
+          "winner": "North Carolina",
+          "loser": "UCLA",
+          "win_prob": 0.5103
+        },
+        {
+          "division": "East",
+          "team1": "Saint Mary's",
+          "team2": "Kansas",
+          "winner": "Saint Mary's",
+          "loser": "Kansas",
+          "win_prob": 0.4819
+        },
+        {
+          "division": "East",
+          "team1": "Iowa",
+          "team2": "Arkansas",
+          "winner": "Iowa",
+          "loser": "Arkansas",
+          "win_prob": 0.4831
+        },
+        {
+          "division": "West",
+          "team1": "Baylor",
+          "team2": "Saint Louis",
+          "winner": "Saint Louis",
+          "loser": "Baylor",
+          "win_prob": 0.4966
+        },
+        {
+          "division": "West",
+          "team1": "Santa Clara",
+          "team2": "VCU",
+          "winner": "Santa Clara",
+          "loser": "VCU",
+          "win_prob": 0.5141
+        },
+        {
+          "division": "West",
+          "team1": "SMU",
+          "team2": "Oklahoma",
+          "winner": "SMU",
+          "loser": "Oklahoma",
+          "win_prob": 0.5009
+        },
+        {
+          "division": "West",
+          "team1": "Cincinnati",
+          "team2": "San Diego St.",
+          "winner": "San Diego St.",
+          "loser": "Cincinnati",
+          "win_prob": 0.4916
+        },
+        {
+          "division": "Midwest",
+          "team1": "Colorado",
+          "team2": "Virginia Tech",
+          "winner": "Virginia Tech",
+          "loser": "Colorado",
+          "win_prob": 0.5063
+        },
+        {
+          "division": "Midwest",
+          "team1": "Grand Canyon",
+          "team2": "UCF",
+          "winner": "UCF",
+          "loser": "Grand Canyon",
+          "win_prob": 0.5176
+        },
+        {
+          "division": "Midwest",
+          "team1": "Washington",
+          "team2": "Arizona St.",
+          "winner": "Washington",
+          "loser": "Arizona St.",
+          "win_prob": 0.5018
+        },
+        {
+          "division": "Midwest",
+          "team1": "Tulsa",
+          "team2": "Missouri",
+          "winner": "Tulsa",
+          "loser": "Missouri",
+          "win_prob": 0.4776
+        }
+      ],
+      "Sweet 16": [
+        {
+          "division": "South",
+          "team1": "Tennessee",
+          "team2": "Nebraska",
+          "winner": "Nebraska",
+          "loser": "Tennessee",
+          "win_prob": 0.5002
+        },
+        {
+          "division": "South",
+          "team1": "Connecticut",
+          "team2": "Gonzaga",
+          "winner": "Connecticut",
+          "loser": "Gonzaga",
+          "win_prob": 0.4955
+        },
+        {
+          "division": "East",
+          "team1": "BYU",
+          "team2": "North Carolina",
+          "winner": "North Carolina",
+          "loser": "BYU",
+          "win_prob": 0.5033
+        },
+        {
+          "division": "East",
+          "team1": "Saint Mary's",
+          "team2": "Iowa",
+          "winner": "Iowa",
+          "loser": "Saint Mary's",
+          "win_prob": 0.502
+        },
+        {
+          "division": "West",
+          "team1": "Saint Louis",
+          "team2": "Santa Clara",
+          "winner": "Santa Clara",
+          "loser": "Saint Louis",
+          "win_prob": 0.5132
+        },
+        {
+          "division": "West",
+          "team1": "SMU",
+          "team2": "San Diego St.",
+          "winner": "SMU",
+          "loser": "San Diego St.",
+          "win_prob": 0.5064
+        },
+        {
+          "division": "Midwest",
+          "team1": "Virginia Tech",
+          "team2": "UCF",
+          "winner": "Virginia Tech",
+          "loser": "UCF",
+          "win_prob": 0.4942
+        },
+        {
+          "division": "Midwest",
+          "team1": "Washington",
+          "team2": "Tulsa",
+          "winner": "Washington",
+          "loser": "Tulsa",
+          "win_prob": 0.5197
+        }
+      ],
+      "Elite 8": [
+        {
+          "division": "South",
+          "team1": "Nebraska",
+          "team2": "Connecticut",
+          "winner": "Nebraska",
+          "loser": "Connecticut",
+          "win_prob": 0.4941
+        },
+        {
+          "division": "East",
+          "team1": "North Carolina",
+          "team2": "Iowa",
+          "winner": "North Carolina",
+          "loser": "Iowa",
+          "win_prob": 0.4947
+        },
+        {
+          "division": "West",
+          "team1": "Santa Clara",
+          "team2": "SMU",
+          "winner": "Santa Clara",
+          "loser": "SMU",
+          "win_prob": 0.5013
+        },
+        {
+          "division": "Midwest",
+          "team1": "Virginia Tech",
+          "team2": "Washington",
+          "winner": "Virginia Tech",
+          "loser": "Washington",
+          "win_prob": 0.494
+        }
+      ],
+      "Final Four": [
+        {
+          "division": "Final Four",
+          "team1": "North Carolina",
+          "team2": "Santa Clara",
+          "winner": "Santa Clara",
+          "loser": "North Carolina",
+          "win_prob": 0.4862
+        },
+        {
+          "division": "Final Four",
+          "team1": "Nebraska",
+          "team2": "Virginia Tech",
+          "winner": "Nebraska",
+          "loser": "Virginia Tech",
+          "win_prob": 0.5555
+        }
+      ],
+      "Championship": [
+        {
+          "division": "Championship",
+          "team1": "Santa Clara",
+          "team2": "Nebraska",
+          "winner": "Nebraska",
+          "loser": "Santa Clara",
+          "win_prob": 0.5377
+        }
+      ]
+    },
+    "winners": {
+      "Round of 64": [
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 16,
+            "team_id": 16,
+            "team_name": "Tennessee",
+            "adj_em": 26.1,
+            "luck": -0.058,
+            "sos": 14.45
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 9,
+            "team_id": 9,
+            "team_name": "Michigan St.",
+            "adj_em": 28.93,
+            "luck": 0.027,
+            "sos": 12.83
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 12,
+            "team_id": 12,
+            "team_name": "Nebraska",
+            "adj_em": 26.91,
+            "luck": 0.024,
+            "sos": 10.82
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 13,
+            "team_id": 13,
+            "team_name": "Vanderbilt",
+            "adj_em": 26.46,
+            "luck": 0.02,
+            "sos": 13.36
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 11,
+            "team_id": 11,
+            "team_name": "Connecticut",
+            "adj_em": 28.21,
+            "luck": 0.052,
+            "sos": 11.99
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 14,
+            "team_id": 14,
+            "team_name": "Texas Tech",
+            "adj_em": 26.14,
+            "luck": -0.002,
+            "sos": 15.4
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 10,
+            "team_id": 10,
+            "team_name": "Gonzaga",
+            "adj_em": 28.37,
+            "luck": 0.067,
+            "sos": 6.01
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 15,
+            "team_id": 15,
+            "team_name": "Alabama",
+            "adj_em": 26.1,
+            "luck": 0.038,
+            "sos": 17.06
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 1,
+            "team_id": 17,
+            "team_name": "Louisville",
+            "adj_em": 26.08,
+            "luck": -0.016,
+            "sos": 12.42
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 9,
+            "team_id": 25,
+            "team_name": "BYU",
+            "adj_em": 22.38,
+            "luck": -0.011,
+            "sos": 14.42
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 12,
+            "team_id": 33,
+            "team_name": "UCLA",
+            "adj_em": 21.26,
+            "luck": 0.015,
+            "sos": 11.66
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 13,
+            "team_id": 28,
+            "team_name": "North Carolina",
+            "adj_em": 21.11,
+            "luck": 0.077,
+            "sos": 11.56
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 6,
+            "team_id": 22,
+            "team_name": "Saint Mary's",
+            "adj_em": 23.62,
+            "luck": 0.024,
+            "sos": 4.94
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 3,
+            "team_id": 19,
+            "team_name": "Kansas",
+            "adj_em": 25.38,
+            "luck": 0.038,
+            "sos": 16.71
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 7,
+            "team_id": 23,
+            "team_name": "Iowa",
+            "adj_em": 22.61,
+            "luck": -0.044,
+            "sos": 10.54
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 2,
+            "team_id": 18,
+            "team_name": "Arkansas",
+            "adj_em": 25.95,
+            "luck": 0.029,
+            "sos": 14.81
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 16,
+            "team_id": 47,
+            "team_name": "Baylor",
+            "adj_em": 16.29,
+            "luck": -0.074,
+            "sos": 14.31
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 8,
+            "team_id": 40,
+            "team_name": "Saint Louis",
+            "adj_em": 18.62,
+            "luck": 0.043,
+            "sos": 0.64
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 5,
+            "team_id": 37,
+            "team_name": "Santa Clara",
+            "adj_em": 19.33,
+            "luck": 0.008,
+            "sos": 5.16
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 13,
+            "team_id": 45,
+            "team_name": "VCU",
+            "adj_em": 16.85,
+            "luck": -0.019,
+            "sos": 3.52
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 11,
+            "team_id": 43,
+            "team_name": "SMU",
+            "adj_em": 17.49,
+            "luck": -0.033,
+            "sos": 11.1
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 14,
+            "team_id": 48,
+            "team_name": "Oklahoma",
+            "adj_em": 16.82,
+            "luck": -0.068,
+            "sos": 13.33
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 10,
+            "team_id": 42,
+            "team_name": "Cincinnati",
+            "adj_em": 17.82,
+            "luck": -0.069,
+            "sos": 11.6
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 15,
+            "team_id": 46,
+            "team_name": "San Diego St.",
+            "adj_em": 16.66,
+            "luck": 0.004,
+            "sos": 8.16
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 16,
+            "team_id": 66,
+            "team_name": "Colorado",
+            "adj_em": 12.55,
+            "luck": 0.034,
+            "sos": 11.29
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 9,
+            "team_id": 57,
+            "team_name": "Virginia Tech",
+            "adj_em": 14.07,
+            "luck": 0.001,
+            "sos": 10.28
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 12,
+            "team_id": 60,
+            "team_name": "Grand Canyon",
+            "adj_em": 13.5,
+            "luck": -0.056,
+            "sos": 3.89
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 4,
+            "team_id": 53,
+            "team_name": "UCF",
+            "adj_em": 15.07,
+            "luck": 0.084,
+            "sos": 11.24
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 6,
+            "team_id": 51,
+            "team_name": "Washington",
+            "adj_em": 14.96,
+            "luck": -0.105,
+            "sos": 11.91
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 14,
+            "team_id": 62,
+            "team_name": "Arizona St.",
+            "adj_em": 13.19,
+            "luck": 0.031,
+            "sos": 14.19
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 7,
+            "team_id": 55,
+            "team_name": "Tulsa",
+            "adj_em": 14.68,
+            "luck": 0.004,
+            "sos": 0.69
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 2,
+            "team_id": 50,
+            "team_name": "Missouri",
+            "adj_em": 15.53,
+            "luck": 0.055,
+            "sos": 11.42
+          }
+        }
+      ],
+      "Round of 32": [
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 16,
+            "team_id": 16,
+            "team_name": "Tennessee",
+            "adj_em": 26.1,
+            "luck": -0.058,
+            "sos": 14.45
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 12,
+            "team_id": 12,
+            "team_name": "Nebraska",
+            "adj_em": 26.91,
+            "luck": 0.024,
+            "sos": 10.82
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 11,
+            "team_id": 11,
+            "team_name": "Connecticut",
+            "adj_em": 28.21,
+            "luck": 0.052,
+            "sos": 11.99
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 10,
+            "team_id": 10,
+            "team_name": "Gonzaga",
+            "adj_em": 28.37,
+            "luck": 0.067,
+            "sos": 6.01
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 9,
+            "team_id": 25,
+            "team_name": "BYU",
+            "adj_em": 22.38,
+            "luck": -0.011,
+            "sos": 14.42
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 13,
+            "team_id": 28,
+            "team_name": "North Carolina",
+            "adj_em": 21.11,
+            "luck": 0.077,
+            "sos": 11.56
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 6,
+            "team_id": 22,
+            "team_name": "Saint Mary's",
+            "adj_em": 23.62,
+            "luck": 0.024,
+            "sos": 4.94
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 7,
+            "team_id": 23,
+            "team_name": "Iowa",
+            "adj_em": 22.61,
+            "luck": -0.044,
+            "sos": 10.54
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 8,
+            "team_id": 40,
+            "team_name": "Saint Louis",
+            "adj_em": 18.62,
+            "luck": 0.043,
+            "sos": 0.64
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 5,
+            "team_id": 37,
+            "team_name": "Santa Clara",
+            "adj_em": 19.33,
+            "luck": 0.008,
+            "sos": 5.16
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 11,
+            "team_id": 43,
+            "team_name": "SMU",
+            "adj_em": 17.49,
+            "luck": -0.033,
+            "sos": 11.1
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 15,
+            "team_id": 46,
+            "team_name": "San Diego St.",
+            "adj_em": 16.66,
+            "luck": 0.004,
+            "sos": 8.16
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 9,
+            "team_id": 57,
+            "team_name": "Virginia Tech",
+            "adj_em": 14.07,
+            "luck": 0.001,
+            "sos": 10.28
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 4,
+            "team_id": 53,
+            "team_name": "UCF",
+            "adj_em": 15.07,
+            "luck": 0.084,
+            "sos": 11.24
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 6,
+            "team_id": 51,
+            "team_name": "Washington",
+            "adj_em": 14.96,
+            "luck": -0.105,
+            "sos": 11.91
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 7,
+            "team_id": 55,
+            "team_name": "Tulsa",
+            "adj_em": 14.68,
+            "luck": 0.004,
+            "sos": 0.69
+          }
+        }
+      ],
+      "Sweet 16": [
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 12,
+            "team_id": 12,
+            "team_name": "Nebraska",
+            "adj_em": 26.91,
+            "luck": 0.024,
+            "sos": 10.82
+          }
+        },
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 11,
+            "team_id": 11,
+            "team_name": "Connecticut",
+            "adj_em": 28.21,
+            "luck": 0.052,
+            "sos": 11.99
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 13,
+            "team_id": 28,
+            "team_name": "North Carolina",
+            "adj_em": 21.11,
+            "luck": 0.077,
+            "sos": 11.56
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 7,
+            "team_id": 23,
+            "team_name": "Iowa",
+            "adj_em": 22.61,
+            "luck": -0.044,
+            "sos": 10.54
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 5,
+            "team_id": 37,
+            "team_name": "Santa Clara",
+            "adj_em": 19.33,
+            "luck": 0.008,
+            "sos": 5.16
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 11,
+            "team_id": 43,
+            "team_name": "SMU",
+            "adj_em": 17.49,
+            "luck": -0.033,
+            "sos": 11.1
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 9,
+            "team_id": 57,
+            "team_name": "Virginia Tech",
+            "adj_em": 14.07,
+            "luck": 0.001,
+            "sos": 10.28
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 6,
+            "team_id": 51,
+            "team_name": "Washington",
+            "adj_em": 14.96,
+            "luck": -0.105,
+            "sos": 11.91
+          }
+        }
+      ],
+      "Elite 8": [
+        {
+          "division": "South",
+          "team": {
+            "division": "South",
+            "seed": 12,
+            "team_id": 12,
+            "team_name": "Nebraska",
+            "adj_em": 26.91,
+            "luck": 0.024,
+            "sos": 10.82
+          }
+        },
+        {
+          "division": "East",
+          "team": {
+            "division": "East",
+            "seed": 13,
+            "team_id": 28,
+            "team_name": "North Carolina",
+            "adj_em": 21.11,
+            "luck": 0.077,
+            "sos": 11.56
+          }
+        },
+        {
+          "division": "West",
+          "team": {
+            "division": "West",
+            "seed": 5,
+            "team_id": 37,
+            "team_name": "Santa Clara",
+            "adj_em": 19.33,
+            "luck": 0.008,
+            "sos": 5.16
+          }
+        },
+        {
+          "division": "Midwest",
+          "team": {
+            "division": "Midwest",
+            "seed": 9,
+            "team_id": 57,
+            "team_name": "Virginia Tech",
+            "adj_em": 14.07,
+            "luck": 0.001,
+            "sos": 10.28
+          }
+        }
+      ],
+      "Final Four": [
+        {
+          "division": "Final Four",
+          "team": {
+            "division": "West",
+            "seed": 5,
+            "team_id": 37,
+            "team_name": "Santa Clara",
+            "adj_em": 19.33,
+            "luck": 0.008,
+            "sos": 5.16
+          }
+        },
+        {
+          "division": "Final Four",
+          "team": {
+            "division": "South",
+            "seed": 12,
+            "team_id": 12,
+            "team_name": "Nebraska",
+            "adj_em": 26.91,
+            "luck": 0.024,
+            "sos": 10.82
+          }
+        }
+      ],
+      "Championship": [
+        {
+          "division": "Championship",
+          "team": {
+            "division": "South",
+            "seed": 12,
+            "team_id": 12,
+            "team_name": "Nebraska",
+            "adj_em": 26.91,
+            "luck": 0.024,
+            "sos": 10.82
+          }
+        }
+      ]
+    }
+  }
+}
