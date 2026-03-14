@@ -1,4 +1,5 @@
 import json
+import math
 import random
 import uuid
 from pathlib import Path
@@ -8,6 +9,7 @@ import pandas as pd
 import streamlit as st
 
 from app_logic.objDef import team as Team
+from scraping.espnConnect import ESPNConnect
 from sql.sqlHandler import (
     getMBBTeams,
     getSeededBracket,
@@ -65,6 +67,10 @@ def _name_key(value: str) -> str:
     return "".join(ch for ch in (value or "").lower() if ch.isalnum())
 
 
+def _matchup_key(division: str, team1: str, team2: str) -> str:
+    return f"{division}|{_name_key(team1)}|{_name_key(team2)}"
+
+
 def _session_file() -> Path:
     if "session_id" not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
@@ -101,7 +107,6 @@ def _load_seed_rows_from_sql(year: int) -> List[dict]:
     if rows:
         return _sort_seed_rows(rows)
 
-    # Fallback: if no seeded rows in SQL, derive simple 1-16 buckets by AdjEm.
     try:
         stats = getTeamStatsForYear(year)
     except Exception:
@@ -126,6 +131,46 @@ def _load_seed_rows_from_sql(year: int) -> List[dict]:
     return _sort_seed_rows(rows)
 
 
+def _load_espn_probabilities(year: int) -> List[dict]:
+    try:
+        client = ESPNConnect()
+        return client.fetch_matchup_probabilities(year)
+    except Exception:
+        return []
+
+
+def _lookup_espn_probability(prob_rows: List[dict], team1: str, team2: str) -> float:
+    k1 = _name_key(team1)
+    k2 = _name_key(team2)
+
+    for row in prob_rows:
+        a = _name_key(row.get("team1", ""))
+        b = _name_key(row.get("team2", ""))
+        p = float(row.get("team1_probability", 50.0))
+        if a == k1 and b == k2:
+            return round(max(0.0, min(100.0, p)), 2)
+        if a == k2 and b == k1:
+            return round(max(0.0, min(100.0, 100.0 - p)), 2)
+
+    return 50.0
+
+
+def _kenpom_strength(entry: dict) -> float:
+    adj_em = float(entry.get("adj_em") or 0.0)
+    sos = float(entry.get("sos") or 0.0)
+    luck = float(entry.get("luck") or 0.0)
+    sos_component = math.copysign(math.sqrt(abs(sos)), sos) if sos != 0 else 0.0
+    return adj_em + 0.35 * sos_component + 2.0 * luck
+
+
+def _lookup_kenpom_probability(team1_entry: dict, team2_entry: dict) -> float:
+    s1 = _kenpom_strength(team1_entry)
+    s2 = _kenpom_strength(team2_entry)
+    diff = s1 - s2
+    p = 1.0 / (1.0 + math.exp(-diff / 6.0))
+    return round(max(0.0, min(100.0, p * 100.0)), 2)
+
+
 def _init_session_payload(year: int) -> dict:
     base_rows = _load_seed_rows_from_sql(year)
     return {
@@ -134,11 +179,14 @@ def _init_session_payload(year: int) -> dict:
             "kenpom": base_rows,
             "bracketology": [dict(r) for r in base_rows],
         },
+        "espn_probabilities": _load_espn_probabilities(year),
         "simulation": {
             "source": "kenpom",
+            "default_probability_source": "ESPN Probability",
             "completed_rounds": 0,
             "results": {},
             "winners": {},
+            "round_inputs": {},
         },
     }
 
@@ -148,6 +196,14 @@ def load_session_payload(year: int) -> dict:
     if path.exists():
         payload = json.loads(path.read_text())
         if int(payload.get("year", 0)) == int(year):
+            payload.setdefault("espn_probabilities", _load_espn_probabilities(year))
+            sim = payload.setdefault("simulation", {})
+            sim.setdefault("source", "kenpom")
+            sim.setdefault("default_probability_source", "ESPN Probability")
+            sim.setdefault("completed_rounds", 0)
+            sim.setdefault("results", {})
+            sim.setdefault("winners", {})
+            sim.setdefault("round_inputs", {})
             return payload
 
     payload = _init_session_payload(year)
@@ -191,16 +247,21 @@ def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List
     for game in games:
         t1_entry = game["team1"]
         t2_entry = game["team2"]
-        t1 = _to_team_obj(t1_entry)
-        t2 = _to_team_obj(t2_entry)
 
-        t1.versus(t2, round_num)
-        p1 = max(0.0, min(1.0, t1.probability))
+        team1_probs = game.get("team1_probs", {})
+        team2_probs = game.get("team2_probs", {})
+
+        sim1 = max(0.0, min(100.0, float(team1_probs.get("simulation_probability", 50.0))))
+        sim2 = max(0.0, min(100.0, float(team2_probs.get("simulation_probability", 50.0))))
+        denom = sim1 + sim2
+        p1 = (sim1 / denom) if denom > 0 else 0.5
 
         if random.random() <= p1:
-            winner_entry, loser_entry, win_prob = t1_entry, t2_entry, p1
+            winner_entry, loser_entry = t1_entry, t2_entry
+            winner_probs = team1_probs
         else:
-            winner_entry, loser_entry, win_prob = t2_entry, t1_entry, 1.0 - p1
+            winner_entry, loser_entry = t2_entry, t1_entry
+            winner_probs = team2_probs
 
         results.append(
             {
@@ -209,7 +270,10 @@ def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List
                 "team2": t2_entry.get("team_name"),
                 "winner": winner_entry.get("team_name"),
                 "loser": loser_entry.get("team_name"),
-                "win_prob": round(float(win_prob), 4),
+                "winner_espn_probability": round(float(winner_probs.get("espn_probability", 50.0)), 2),
+                "winner_kenpom_probability": round(float(winner_probs.get("kenpom_probability", 50.0)), 2),
+                "winner_simulation_probability": round(float(winner_probs.get("simulation_probability", 50.0)), 2),
+                "winner_moneyline": int(round(float(winner_probs.get("moneyline", -100)))),
             }
         )
         winners.append({"division": game.get("division", ""), "team": winner_entry})
@@ -218,7 +282,6 @@ def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List
 
 
 def _build_next_games_from_winners(round_index: int, winners: List[dict]) -> List[dict]:
-    # round_index: 1=>Round32, 2=>Sweet16, 3=>Elite8, 4=>FinalFour, 5=>Championship
     games: List[dict] = []
 
     if round_index in (1, 2, 3):
@@ -292,29 +355,123 @@ def _render_games_from_results(results: List[dict]):
                     f"""
                     <div class="game-card">
                         <div><b>Game {i}:</b> <b>{game['team1']}</b> vs <b>{game['team2']}</b></div>
-                        <div class="winner">Winner: {game['winner']} ({game['win_prob']:.1%})</div>
+                        <div class="winner">Winner: {game['winner']}</div>
+                        <div>Winner ESPN: {float(game['winner_espn_probability']):.2f}% | Winner KenPom: {float(game['winner_kenpom_probability']):.2f}%</div>
+                        <div>Winner Simulation: {float(game['winner_simulation_probability']):.2f}% | Winner Moneyline: {int(game['winner_moneyline'])}</div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
 
 
-def _render_games_preview(games: List[dict]):
-    if not games:
-        st.info("No matchups available for this round.")
-        return
+def _render_probability_editor(payload: dict, round_name: str, pending_games: List[dict], default_source: str) -> List[dict]:
+    prob_rows = payload.get("espn_probabilities", [])
+    existing = payload["simulation"].setdefault("round_inputs", {}).get(round_name, [])
+    existing_map = {r.get("row_key"): r for r in existing}
 
-    for division, div_games in _games_by_division(games).items():
+    edited_rows: List[dict] = []
+
+    for division, div_games in _games_by_division(pending_games).items():
         with st.expander(division.upper(), expanded=False):
-            for i, game in enumerate(div_games, start=1):
+            for game_idx, game in enumerate(div_games, start=1):
+                team1_name = game["team1"]["team_name"]
+                team2_name = game["team2"]["team_name"]
+                matchup_key = _matchup_key(division, team1_name, team2_name)
+
+                team_specs = [
+                    (game["team1"], game["team2"], team1_name),
+                    (game["team2"], game["team1"], team2_name),
+                ]
+
+                row_models = []
+                for team_entry, opponent_entry, team_name in team_specs:
+                    row_key = f"{matchup_key}|{_name_key(team_name)}"
+                    espn_prob = _lookup_espn_probability(prob_rows, team_name, opponent_entry["team_name"])
+                    kenpom_prob = _lookup_kenpom_probability(team_entry, opponent_entry)
+
+                    existing_row = existing_map.get(row_key, {})
+                    default_sim = espn_prob if default_source == "ESPN Probability" else kenpom_prob
+                    sim_prob = existing_row.get("simulation_probability", default_sim)
+                    moneyline = existing_row.get("moneyline", -100)
+
+                    row_models.append(
+                        {
+                            "row_key": row_key,
+                            "matchup_key": matchup_key,
+                            "division": division,
+                            "team": team_name,
+                            "espn_probability": round(float(espn_prob), 2),
+                            "kenpom_probability": round(float(kenpom_prob), 2),
+                            "moneyline": int(round(float(moneyline))),
+                            "simulation_probability": round(float(sim_prob), 2),
+                        }
+                    )
+
+                shade = "#f3f7ff" if game_idx % 2 == 1 else "#f4fbf2"
                 st.markdown(
-                    f"""
-                    <div class="game-card">
-                        <div><b>Game {i}:</b> <b>{game['team1']['team_name']}</b> vs <b>{game['team2']['team_name']}</b></div>
-                    </div>
-                    """,
+                    f"<div style='background:{shade};padding:6px 10px;border-radius:6px;border:1px solid #d9dee8;'><b>Game {game_idx}</b>: {team1_name} vs {team2_name}</div>",
                     unsafe_allow_html=True,
                 )
+
+                view_df = pd.DataFrame(row_models)[
+                    ["team", "espn_probability", "kenpom_probability", "moneyline", "simulation_probability"]
+                ].copy()
+
+                edited_view = st.data_editor(
+                    view_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    disabled=["team", "espn_probability", "kenpom_probability", "moneyline"],
+                    column_config={
+                        "team": "Team",
+                        "espn_probability": st.column_config.NumberColumn(
+                            "ESPN Probability", min_value=0.0, max_value=100.0, format="%.2f%%"
+                        ),
+                        "kenpom_probability": st.column_config.NumberColumn(
+                            "KenPom Probability", min_value=0.0, max_value=100.0, format="%.2f%%"
+                        ),
+                        "moneyline": st.column_config.NumberColumn("Moneyline", step=1, format="%d"),
+                        "simulation_probability": st.column_config.NumberColumn(
+                            "Simulation Probability", min_value=0.0, max_value=100.0, step=0.01, format="%.2f%%"
+                        ),
+                    },
+                    key=f"prob_editor_{round_name}_{_name_key(division)}_{game_idx}",
+                )
+
+                team1_sim = 50.0
+                if len(edited_view.index) > 0:
+                    try:
+                        team1_sim = float(edited_view.iloc[0]["simulation_probability"])
+                    except Exception:
+                        team1_sim = float(row_models[0]["simulation_probability"])
+                team1_sim = round(max(0.0, min(100.0, team1_sim)), 2)
+                team2_sim = round(100.0 - team1_sim, 2)
+
+                # Force complementary display values for this matchup before persisting.
+                if len(edited_view.index) > 0:
+                    edited_view.at[edited_view.index[0], "simulation_probability"] = team1_sim
+                if len(edited_view.index) > 1:
+                    edited_view.at[edited_view.index[1], "simulation_probability"] = team2_sim
+
+                for i, row in edited_view.iterrows():
+                    base = row_models[i]
+                    sim_value = team1_sim if i == 0 else team2_sim
+                    edited_rows.append(
+                        {
+                            "row_key": base["row_key"],
+                            "matchup_key": base["matchup_key"],
+                            "division": base["division"],
+                            "team": base["team"],
+                            "espn_probability": round(float(base["espn_probability"]), 2),
+                            "kenpom_probability": round(float(base["kenpom_probability"]), 2),
+                            "moneyline": int(round(float(base["moneyline"]))),
+                            "simulation_probability": round(float(sim_value), 2),
+                        }
+                    )
+
+    payload["simulation"]["round_inputs"][round_name] = edited_rows
+    save_session_payload(payload)
+    return edited_rows
 
 
 def view_seeding_page(payload: dict):
@@ -330,14 +487,29 @@ def view_seeding_page(payload: dict):
     with c1:
         if st.button("Save Seeding Edits", key=f"save_seed_{source_key}"):
             payload["seeding"][source_key] = _sort_seed_rows(edited_df.to_dict(orient="records"))
-            payload["simulation"] = {"source": source_key, "completed_rounds": 0, "results": {}, "winners": {}}
+            payload["simulation"] = {
+                "source": source_key,
+                "default_probability_source": payload["simulation"].get("default_probability_source", "ESPN Probability"),
+                "completed_rounds": 0,
+                "results": {},
+                "winners": {},
+                "round_inputs": {},
+            }
             save_session_payload(payload)
             st.success("Seeding saved to this session file. Simulation reset for this source.")
     with c2:
         if st.button("Reload Seeding From SQL", key=f"reload_seed_{source_key}"):
             fresh = _load_seed_rows_from_sql(int(payload["year"]))
             payload["seeding"][source_key] = fresh
-            payload["simulation"] = {"source": source_key, "completed_rounds": 0, "results": {}, "winners": {}}
+            payload["simulation"] = {
+                "source": source_key,
+                "default_probability_source": payload["simulation"].get("default_probability_source", "ESPN Probability"),
+                "completed_rounds": 0,
+                "results": {},
+                "winners": {},
+                "round_inputs": {},
+            }
+            payload["espn_probabilities"] = _load_espn_probabilities(int(payload["year"]))
             save_session_payload(payload)
             st.success("Reloaded from SQL and reset simulation.")
 
@@ -347,6 +519,14 @@ def run_simulation_page(payload: dict):
     source_label = st.radio("Use Seeding From", ["KenPom", "Bracketology"], horizontal=True, key="sim_source")
     source_key = "kenpom" if source_label == "KenPom" else "bracketology"
     payload["simulation"]["source"] = source_key
+
+    default_source = st.selectbox(
+        "Default Simulation Probability",
+        ["ESPN Probability", "KenPom Probability"],
+        index=0 if payload["simulation"].get("default_probability_source", "ESPN Probability") == "ESPN Probability" else 1,
+        key="sim_default_prob_source",
+    )
+    payload["simulation"]["default_probability_source"] = default_source
 
     completed = int(payload["simulation"].get("completed_rounds", 0))
     tabs = st.tabs(ROUND_NAMES)
@@ -370,12 +550,38 @@ def run_simulation_page(payload: dict):
                 )
                 continue
 
-            # i == completed: pending active round
             pending_games = _pending_games(payload, source_key, i)
-            _render_games_preview(pending_games)
+            edited_prob_rows = _render_probability_editor(payload, round_name, pending_games, default_source)
+
+            prob_map = {r["row_key"]: r for r in edited_prob_rows}
+            calc_games = []
+            for g in pending_games:
+                t1 = g["team1"]["team_name"]
+                t2 = g["team2"]["team_name"]
+                matchup_key = _matchup_key(g["division"], t1, t2)
+                r1 = prob_map.get(f"{matchup_key}|{_name_key(t1)}", {})
+                r2 = prob_map.get(f"{matchup_key}|{_name_key(t2)}", {})
+
+                calc_games.append(
+                    {
+                        **g,
+                        "team1_probs": {
+                            "espn_probability": float(r1.get("espn_probability", 50.0)),
+                            "kenpom_probability": float(r1.get("kenpom_probability", 50.0)),
+                            "simulation_probability": float(r1.get("simulation_probability", 50.0)),
+                            "moneyline": float(r1.get("moneyline", -100)),
+                        },
+                        "team2_probs": {
+                            "espn_probability": float(r2.get("espn_probability", 50.0)),
+                            "kenpom_probability": float(r2.get("kenpom_probability", 50.0)),
+                            "simulation_probability": float(r2.get("simulation_probability", 50.0)),
+                            "moneyline": float(r2.get("moneyline", -100)),
+                        },
+                    }
+                )
 
             if st.button(f"Calculate {round_name}", key=f"calc_{i}"):
-                results, winners = _simulate_games(pending_games, i + 1)
+                results, winners = _simulate_games(calc_games, i + 1)
                 payload["simulation"].setdefault("results", {})[round_name] = results
                 payload["simulation"].setdefault("winners", {})[round_name] = winners
                 payload["simulation"]["completed_rounds"] = min(6, completed + 1)
