@@ -343,6 +343,16 @@ def _games_by_division(games: List[dict]) -> Dict[str, List[dict]]:
     return ordered
 
 
+def _clamp_probability(value: float) -> float:
+    return round(max(0.0, min(100.0, float(value))), 2)
+
+
+def _sync_probability_pair(changed_key: str, other_key: str):
+    changed_value = _clamp_probability(st.session_state.get(changed_key, 50.0))
+    st.session_state[changed_key] = changed_value
+    st.session_state[other_key] = round(100.0 - changed_value, 2)
+
+
 def _render_games_from_results(results: List[dict]):
     if not results:
         st.info("No games to display yet.")
@@ -366,10 +376,11 @@ def _render_games_from_results(results: List[dict]):
 
 def _render_probability_editor(payload: dict, round_name: str, pending_games: List[dict], default_source: str) -> List[dict]:
     prob_rows = payload.get("espn_probabilities", [])
-    existing = payload["simulation"].setdefault("round_inputs", {}).get(round_name, [])
-    existing_map = {r.get("row_key"): r for r in existing}
+    prior_rows = payload["simulation"].setdefault("round_inputs", {}).get(round_name, [])
+    existing_map = {r.get("row_key"): r for r in prior_rows}
 
     edited_rows: List[dict] = []
+    did_change = False
 
     for division, div_games in _games_by_division(pending_games).items():
         with st.expander(division.upper(), expanded=False):
@@ -400,6 +411,7 @@ def _render_probability_editor(payload: dict, round_name: str, pending_games: Li
                             "matchup_key": matchup_key,
                             "division": division,
                             "team": team_name,
+                            "seed": int(team_entry.get("seed", 0) or 0),
                             "espn_probability": round(float(espn_prob), 2),
                             "kenpom_probability": round(float(kenpom_prob), 2),
                             "moneyline": int(round(float(moneyline))),
@@ -413,48 +425,69 @@ def _render_probability_editor(payload: dict, round_name: str, pending_games: Li
                     unsafe_allow_html=True,
                 )
 
-                view_df = pd.DataFrame(row_models)[
-                    ["team", "espn_probability", "kenpom_probability", "moneyline", "simulation_probability"]
-                ].copy()
+                header_cols = st.columns([0.8, 2.2, 1.2, 1.2, 1.0, 1.6])
+                header_cols[0].markdown("**Seed**")
+                header_cols[1].markdown("**Team**")
+                header_cols[2].markdown("**ESPN**")
+                header_cols[3].markdown("**KenPom**")
+                header_cols[4].markdown("**Moneyline**")
+                header_cols[5].markdown("**Simulation Probability**")
 
-                edited_view = st.data_editor(
-                    view_df,
-                    use_container_width=True,
-                    hide_index=True,
-                    disabled=["team", "espn_probability", "kenpom_probability", "moneyline"],
-                    column_config={
-                        "team": "Team",
-                        "espn_probability": st.column_config.NumberColumn(
-                            "ESPN Probability", min_value=0.0, max_value=100.0, format="%.2f%%"
-                        ),
-                        "kenpom_probability": st.column_config.NumberColumn(
-                            "KenPom Probability", min_value=0.0, max_value=100.0, format="%.2f%%"
-                        ),
-                        "moneyline": st.column_config.NumberColumn("Moneyline", step=1, format="%d"),
-                        "simulation_probability": st.column_config.NumberColumn(
-                            "Simulation Probability", min_value=0.0, max_value=100.0, step=0.01, format="%.2f%%"
-                        ),
-                    },
-                    key=f"prob_editor_{round_name}_{_name_key(division)}_{game_idx}",
+                team1_default = round(float(row_models[0]["simulation_probability"]), 2)
+                team2_default = round(float(row_models[1]["simulation_probability"]), 2)
+                team1_key = f"sim_prob_{round_name}_{_name_key(division)}_{game_idx}_1"
+                team2_key = f"sim_prob_{round_name}_{_name_key(division)}_{game_idx}_2"
+
+                if team1_key not in st.session_state:
+                    st.session_state[team1_key] = team1_default
+                if team2_key not in st.session_state:
+                    st.session_state[team2_key] = team2_default
+
+                row1_cols = st.columns([0.8, 2.2, 1.2, 1.2, 1.0, 1.6])
+                row1_cols[0].write(str(row_models[0]["seed"]))
+                row1_cols[1].write(row_models[0]["team"])
+                row1_cols[2].write(f'{row_models[0]["espn_probability"]:.2f}%')
+                row1_cols[3].write(f'{row_models[0]["kenpom_probability"]:.2f}%')
+                row1_cols[4].write(str(row_models[0]["moneyline"]))
+                team1_sim = row1_cols[5].number_input(
+                    f"Team 1 Simulation Probability {division} Game {game_idx}",
+                    min_value=0.0,
+                    max_value=100.0,
+                    step=0.01,
+                    format="%.2f",
+                    key=team1_key,
+                    label_visibility="collapsed",
+                    on_change=_sync_probability_pair,
+                    args=(team1_key, team2_key),
                 )
 
-                team1_sim = 50.0
-                if len(edited_view.index) > 0:
-                    try:
-                        team1_sim = float(edited_view.iloc[0]["simulation_probability"])
-                    except Exception:
-                        team1_sim = float(row_models[0]["simulation_probability"])
-                team1_sim = round(max(0.0, min(100.0, team1_sim)), 2)
-                team2_sim = round(100.0 - team1_sim, 2)
+                row2_cols = st.columns([0.8, 2.2, 1.2, 1.2, 1.0, 1.6])
+                row2_cols[0].write(str(row_models[1]["seed"]))
+                row2_cols[1].write(row_models[1]["team"])
+                row2_cols[2].write(f'{row_models[1]["espn_probability"]:.2f}%')
+                row2_cols[3].write(f'{row_models[1]["kenpom_probability"]:.2f}%')
+                row2_cols[4].write(str(row_models[1]["moneyline"]))
+                team2_sim = row2_cols[5].number_input(
+                    f"Team 2 Simulation Probability {division} Game {game_idx}",
+                    min_value=0.0,
+                    max_value=100.0,
+                    step=0.01,
+                    format="%.2f",
+                    key=team2_key,
+                    label_visibility="collapsed",
+                    on_change=_sync_probability_pair,
+                    args=(team2_key, team1_key),
+                )
 
-                # Force complementary display values for this matchup before persisting.
-                if len(edited_view.index) > 0:
-                    edited_view.at[edited_view.index[0], "simulation_probability"] = team1_sim
-                if len(edited_view.index) > 1:
-                    edited_view.at[edited_view.index[1], "simulation_probability"] = team2_sim
+                team1_sim = _clamp_probability(team1_sim)
+                team2_sim = _clamp_probability(team2_sim)
+                changed1 = team1_sim != team1_default
+                changed2 = team2_sim != team2_default
 
-                for i, row in edited_view.iterrows():
-                    base = row_models[i]
+                if changed1 or changed2:
+                    did_change = True
+
+                for i, base in enumerate(row_models):
                     sim_value = team1_sim if i == 0 else team2_sim
                     edited_rows.append(
                         {
@@ -462,6 +495,7 @@ def _render_probability_editor(payload: dict, round_name: str, pending_games: Li
                             "matchup_key": base["matchup_key"],
                             "division": base["division"],
                             "team": base["team"],
+                            "seed": int(base["seed"]),
                             "espn_probability": round(float(base["espn_probability"]), 2),
                             "kenpom_probability": round(float(base["kenpom_probability"]), 2),
                             "moneyline": int(round(float(base["moneyline"]))),
@@ -470,8 +504,21 @@ def _render_probability_editor(payload: dict, round_name: str, pending_games: Li
                     )
 
     payload["simulation"]["round_inputs"][round_name] = edited_rows
-    save_session_payload(payload)
+    if did_change or edited_rows != prior_rows:
+        save_session_payload(payload)
     return edited_rows
+
+
+def _reset_simulation_from_round(payload: dict, start_round_index: int):
+    sim = payload["simulation"]
+    round_names_to_clear = ROUND_NAMES[start_round_index:]
+
+    for round_name in round_names_to_clear:
+        sim.setdefault("results", {}).pop(round_name, None)
+        sim.setdefault("winners", {}).pop(round_name, None)
+        sim.setdefault("round_inputs", {}).pop(round_name, None)
+
+    sim["completed_rounds"] = start_round_index
 
 
 def view_seeding_page(payload: dict):
@@ -520,13 +567,19 @@ def run_simulation_page(payload: dict):
     source_key = "kenpom" if source_label == "KenPom" else "bracketology"
     payload["simulation"]["source"] = source_key
 
+    prior_default_source = payload["simulation"].get("default_probability_source", "ESPN Probability")
     default_source = st.selectbox(
         "Default Simulation Probability",
         ["ESPN Probability", "KenPom Probability"],
-        index=0 if payload["simulation"].get("default_probability_source", "ESPN Probability") == "ESPN Probability" else 1,
+        index=0 if prior_default_source == "ESPN Probability" else 1,
         key="sim_default_prob_source",
     )
     payload["simulation"]["default_probability_source"] = default_source
+
+    if default_source != prior_default_source:
+        payload["simulation"]["round_inputs"] = {}
+        save_session_payload(payload)
+        st.rerun()
 
     completed = int(payload["simulation"].get("completed_rounds", 0))
     tabs = st.tabs(ROUND_NAMES)
@@ -534,8 +587,20 @@ def run_simulation_page(payload: dict):
     for i, round_name in enumerate(ROUND_NAMES):
         with tabs[i]:
             round_results = payload["simulation"].get("results", {}).get(round_name)
+            round_has_results = bool(round_results)
 
-            if i < completed and round_results:
+            action_cols = st.columns([1, 1, 5])
+            with action_cols[0]:
+                calculate_clicked = st.button(f"Calculate {round_name}", key=f"calc_{i}", disabled=i > completed)
+            with action_cols[1]:
+                reset_clicked = st.button(f"Reset {round_name}", key=f"reset_{i}", disabled=not round_has_results)
+
+            if reset_clicked:
+                _reset_simulation_from_round(payload, i)
+                save_session_payload(payload)
+                st.rerun()
+
+            if i < completed and round_has_results:
                 _render_games_from_results(round_results)
                 continue
 
@@ -580,7 +645,7 @@ def run_simulation_page(payload: dict):
                     }
                 )
 
-            if st.button(f"Calculate {round_name}", key=f"calc_{i}"):
+            if calculate_clicked:
                 results, winners = _simulate_games(calc_games, i + 1)
                 payload["simulation"].setdefault("results", {})[round_name] = results
                 payload["simulation"].setdefault("winners", {})[round_name] = winners
