@@ -3,7 +3,8 @@ import math
 import random
 import uuid
 from pathlib import Path
-from typing import Dict, List
+from collections import Counter
+from typing import Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
@@ -11,11 +12,14 @@ import streamlit as st
 from app_logic.objDef import team as Team
 from scraping.espnConnect import ESPNConnect
 from sql.sqlHandler import (
+    fixTeamReferences,
     getMBBTeams,
     getSeededBracket,
     getTeamStatsForYear,
+    replaceSeedsByYear,
     setupmbbteams,
     updateTeamReferences,
+    upsertSeedsByYear,
 )
 
 
@@ -217,6 +221,75 @@ def save_session_payload(payload: dict):
 
 def _seed_map(rows: List[dict]) -> Dict[tuple, dict]:
     return {(r["division"], int(r["seed"])): r for r in rows}
+
+
+@st.cache_data(show_spinner=False)
+def _team_option_rows(year: int) -> List[dict]:
+    teams = getMBBTeams()
+    stats_by_team = {row.get("TeamID"): row for row in getTeamStatsForYear(year)}
+    option_rows: List[dict] = []
+
+    for row in teams:
+        team_id = row.get("TeamID")
+        stats = stats_by_team.get(team_id, {})
+        team_name = row.get("KenPomName") or row.get("EspnName") or row.get("NcaaName") or f"Team {team_id}"
+        option_rows.append(
+            {
+                "team_id": team_id,
+                "team_name": team_name,
+                "espn_id": row.get("EspnID"),
+                "espn_name": row.get("EspnName"),
+                "ncaa_name": row.get("NcaaName"),
+                "adj_em": float(stats.get("AdjEm") or 0.0),
+                "luck": float(stats.get("Luck") or 0.0),
+                "sos": float(stats.get("Sos") or 0.0),
+            }
+        )
+
+    return sorted(option_rows, key=lambda r: r["team_name"].lower())
+
+
+def _team_option_label(option: Optional[dict]) -> str:
+    if not option:
+        return "Select team"
+    team_name = option.get("team_name") or "Unknown"
+    espn_id = option.get("espn_id")
+    return f"{team_name} [{espn_id}]" if espn_id else team_name
+
+
+def _seed_row_from_option(division: str, seed: int, option: dict) -> dict:
+    return {
+        "division": division,
+        "seed": int(seed),
+        "team_id": option.get("team_id"),
+        "team_name": option.get("team_name") or "",
+        "adj_em": float(option.get("adj_em") or 0.0),
+        "luck": float(option.get("luck") or 0.0),
+        "sos": float(option.get("sos") or 0.0),
+    }
+
+
+def _reset_simulation_for_source(payload: dict, source_key: str):
+    payload["simulation"] = {
+        "source": source_key,
+        "default_probability_source": payload["simulation"].get("default_probability_source", "ESPN Probability"),
+        "completed_rounds": 0,
+        "results": {},
+        "winners": {},
+        "round_inputs": {},
+    }
+
+
+def _seed_editor_revision(source_key: str) -> int:
+    state_key = f"seed_editor_revision_{source_key}"
+    if state_key not in st.session_state:
+        st.session_state[state_key] = 0
+    return int(st.session_state[state_key])
+
+
+def _bump_seed_editor_revision(source_key: str):
+    state_key = f"seed_editor_revision_{source_key}"
+    st.session_state[state_key] = _seed_editor_revision(source_key) + 1
 
 
 def build_first_round_games(seed_rows: List[dict]) -> List[dict]:
@@ -526,39 +599,107 @@ def view_seeding_page(payload: dict):
     source_label = st.radio("Projection Source", ["KenPom", "Bracketology"], horizontal=True)
     source_key = "kenpom" if source_label == "KenPom" else "bracketology"
 
+    year = int(payload["year"])
+    option_rows = _team_option_rows(year)
+    option_by_id = {row["team_id"]: row for row in option_rows}
+    option_values = [None] + [row["team_id"] for row in option_rows]
     rows = _sort_seed_rows(payload["seeding"][source_key])
-    editable_df = pd.DataFrame(rows)[["division", "seed", "team_name", "adj_em", "luck", "sos"]]
-    edited_df = st.data_editor(editable_df, use_container_width=True, hide_index=True, key=f"seed_editor_{source_key}")
+    slot_map = _seed_map(rows)
+    revision = _seed_editor_revision(source_key)
 
-    c1, c2 = st.columns(2)
+    updated_rows: List[dict] = []
+    selected_team_ids: List[int] = []
+    missing_slots: List[str] = []
+
+    for division in DIVISION_ORDER:
+        st.markdown(f"### {division}")
+        for game_idx, (seed1, seed2) in enumerate(FIRST_ROUND_MATCHUPS, start=1):
+            st.markdown(
+                f"<div style='background:#f7f7f9;padding:6px 10px;border-radius:6px;border:1px solid #d9dee8;'><b>Game {game_idx}</b>: {seed1} vs {seed2}</div>",
+                unsafe_allow_html=True,
+            )
+
+            slot1 = slot_map.get((division, seed1), {})
+            slot2 = slot_map.get((division, seed2), {})
+            key1 = f"seed_select_{source_key}_{revision}_{_name_key(division)}_{seed1}"
+            key2 = f"seed_select_{source_key}_{revision}_{_name_key(division)}_{seed2}"
+
+            cols = st.columns([0.7, 4.3, 0.7, 4.3])
+            cols[0].markdown(f"**{seed1}**")
+            selected_team1 = cols[1].selectbox(
+                f"{division} Seed {seed1}",
+                options=option_values,
+                index=option_values.index(slot1.get("team_id")) if slot1.get("team_id") in option_by_id else 0,
+                format_func=lambda team_id: _team_option_label(option_by_id.get(team_id)),
+                key=key1,
+                label_visibility="collapsed",
+            )
+            cols[2].markdown(f"**{seed2}**")
+            selected_team2 = cols[3].selectbox(
+                f"{division} Seed {seed2}",
+                options=option_values,
+                index=option_values.index(slot2.get("team_id")) if slot2.get("team_id") in option_by_id else 0,
+                format_func=lambda team_id: _team_option_label(option_by_id.get(team_id)),
+                key=key2,
+                label_visibility="collapsed",
+            )
+
+            for seed, selected_team_id in ((seed1, selected_team1), (seed2, selected_team2)):
+                selected_option = option_by_id.get(selected_team_id)
+                if not selected_option:
+                    missing_slots.append(f"{division} {seed}")
+                    continue
+                selected_team_ids.append(int(selected_team_id))
+                updated_rows.append(_seed_row_from_option(division, seed, selected_option))
+
+    duplicate_counts = Counter(selected_team_ids)
+    duplicate_ids = [team_id for team_id, count in duplicate_counts.items() if count > 1]
+    duplicate_names = [_team_option_label(option_by_id.get(team_id)) for team_id in duplicate_ids]
+
+    if missing_slots:
+        st.warning(f"Missing team assignments: {', '.join(missing_slots)}")
+    if duplicate_names:
+        st.error(f"Duplicate teams selected: {', '.join(sorted(duplicate_names))}")
+
+    def _validate_seed_editor() -> bool:
+        if missing_slots:
+            st.error("Assign a team to every bracket slot before saving.")
+            return False
+        if duplicate_names:
+            st.error("Each team can only appear once in the bracket. Resolve duplicates before saving.")
+            return False
+        return True
+
+    c1, c2, c3 = st.columns(3)
     with c1:
         if st.button("Save Seeding Edits", key=f"save_seed_{source_key}"):
-            payload["seeding"][source_key] = _sort_seed_rows(edited_df.to_dict(orient="records"))
-            payload["simulation"] = {
-                "source": source_key,
-                "default_probability_source": payload["simulation"].get("default_probability_source", "ESPN Probability"),
-                "completed_rounds": 0,
-                "results": {},
-                "winners": {},
-                "round_inputs": {},
-            }
-            save_session_payload(payload)
-            st.success("Seeding saved to this session file. Simulation reset for this source.")
+            if _validate_seed_editor():
+                payload["seeding"][source_key] = _sort_seed_rows(updated_rows)
+                _reset_simulation_for_source(payload, source_key)
+                save_session_payload(payload)
+                st.success("Seeding saved to this session file. Simulation reset for this source.")
     with c2:
+        if st.button("Save Seeding To SQL", key=f"save_seed_sql_{source_key}"):
+            if _validate_seed_editor():
+                normalized_rows = _sort_seed_rows(updated_rows)
+                try:
+                    replaceSeedsByYear(normalized_rows, year)
+                except Exception as exc:
+                    st.error(f"Save to SQL failed: {exc}")
+                else:
+                    payload["seeding"][source_key] = normalized_rows
+                    _reset_simulation_for_source(payload, source_key)
+                    save_session_payload(payload)
+                    st.success(f"Saved {len(normalized_rows)} seed assignments to SQL for {year}.")
+    with c3:
         if st.button("Reload Seeding From SQL", key=f"reload_seed_{source_key}"):
-            fresh = _load_seed_rows_from_sql(int(payload["year"]))
+            fresh = _load_seed_rows_from_sql(year)
             payload["seeding"][source_key] = fresh
-            payload["simulation"] = {
-                "source": source_key,
-                "default_probability_source": payload["simulation"].get("default_probability_source", "ESPN Probability"),
-                "completed_rounds": 0,
-                "results": {},
-                "winners": {},
-                "round_inputs": {},
-            }
-            payload["espn_probabilities"] = _load_espn_probabilities(int(payload["year"]))
+            _reset_simulation_for_source(payload, source_key)
+            payload["espn_probabilities"] = _load_espn_probabilities(year)
             save_session_payload(payload)
-            st.success("Reloaded from SQL and reset simulation.")
+            _bump_seed_editor_revision(source_key)
+            st.rerun()
 
 
 def run_simulation_page(payload: dict):
@@ -665,7 +806,10 @@ def admin_update_team_references_page():
 
     year = st.number_input("Season Year", min_value=2002, max_value=2100, value=2026, step=1, key="admin_year")
 
-    c1, c2 = st.columns(2)
+    if "team_reference_fix_result" not in st.session_state:
+        st.session_state.team_reference_fix_result = None
+
+    c1, c2, c3 = st.columns(3)
     with c1:
         if st.button("Setup MBBTeams (KenPom + ESPN)", key="admin_setup_mbbteams"):
             with st.spinner("Running setupmbbteams..."):
@@ -676,6 +820,27 @@ def admin_update_team_references_page():
                     )
                 except Exception as exc:
                     st.error(f"Setup failed: {exc}")
+    with c2:
+        if st.button("Fix team references", key="admin_fix_team_refs"):
+            with st.spinner("Reconciling missing ESPN references..."):
+                try:
+                    st.session_state.team_reference_fix_result = fixTeamReferences(int(year))
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Fix team references failed: {exc}")
+
+    fix_result = st.session_state.team_reference_fix_result
+    if fix_result:
+        st.info(
+            " | ".join(
+                [
+                    f"Matched: {fix_result['matched']}",
+                    f"Skipped existing: {fix_result['skipped_existing']}",
+                    f"Unmatched: {fix_result['unmatched']}",
+                    f"Ambiguous: {fix_result['ambiguous']}",
+                ]
+            )
+        )
 
     try:
         rows = getMBBTeams()
@@ -699,13 +864,23 @@ def admin_update_team_references_page():
         key="admin_team_reference_editor",
     )
 
-    with c2:
+    with c3:
         if st.button("Save Team Reference Changes", key="admin_save_team_refs"):
             try:
                 updateTeamReferences(edited_df.to_dict(orient="records"))
                 st.success("Team references saved.")
             except Exception as exc:
                 st.error(f"Save failed: {exc}")
+
+    if fix_result and fix_result.get("unmatched_rows"):
+        st.markdown("**Unmatched Teams**")
+        unmatched_df = pd.DataFrame(fix_result["unmatched_rows"])
+        st.dataframe(unmatched_df[[c for c in ["TeamID", "KenPomName", "EspnID", "EspnName"] if c in unmatched_df.columns]], use_container_width=True, hide_index=True)
+
+    if fix_result and fix_result.get("ambiguous_rows"):
+        st.markdown("**Ambiguous Teams**")
+        ambiguous_df = pd.DataFrame(fix_result["ambiguous_rows"])
+        st.dataframe(ambiguous_df, use_container_width=True, hide_index=True)
 
 
 st.title("March Madness")

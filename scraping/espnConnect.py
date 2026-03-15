@@ -47,6 +47,9 @@ class ESPNConnect:
         payload = self._get_json("teams", params={"limit": int(limit)})
         return self._extract_team_list(payload)
 
+    def fetch_team_catalog(self, limit: int = 400) -> List[dict]:
+        return self.fetch_team_info(limit=limit)
+
     def _extract_team_list(self, payload: dict) -> List[dict]:
         extracted: List[dict] = []
         sports = payload.get("sports", [])
