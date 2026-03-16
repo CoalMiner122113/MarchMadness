@@ -2,6 +2,7 @@ import json
 import math
 import random
 import uuid
+from datetime import datetime
 from pathlib import Path
 from collections import Counter
 from typing import Dict, List, Optional
@@ -102,6 +103,9 @@ def _load_seed_rows_from_sql(year: int) -> List[dict]:
                         "seed": int(item.get("Seed", 0)),
                         "team_id": item.get("TeamID"),
                         "team_name": item.get("KenPomName") or item.get("EspnName") or "",
+                        "espn_name": item.get("EspnName"),
+                        "espn_id": item.get("EspnID"),
+                        "ncaa_name": item.get("NcaaName"),
                         "adj_em": float(item.get("AdjEm") or 0.0),
                         "luck": float(item.get("Luck") or 0.0),
                         "sos": float(item.get("Sos") or 0.0),
@@ -126,6 +130,9 @@ def _load_seed_rows_from_sql(year: int) -> List[dict]:
                 "seed": seed,
                 "team_id": item.get("TeamID"),
                 "team_name": item.get("KenPomName") or item.get("EspnName") or "",
+                "espn_name": item.get("EspnName"),
+                "espn_id": item.get("EspnID"),
+                "ncaa_name": item.get("NcaaName"),
                 "adj_em": float(item.get("AdjEm") or 0.0),
                 "luck": float(item.get("Luck") or 0.0),
                 "sos": float(item.get("Sos") or 0.0),
@@ -143,20 +150,152 @@ def _load_espn_probabilities(year: int) -> List[dict]:
         return []
 
 
-def _lookup_espn_probability(prob_rows: List[dict], team1: str, team2: str) -> float:
-    k1 = _name_key(team1)
-    k2 = _name_key(team2)
+def _load_scoreboard_matchups(year: int) -> List[dict]:
+    try:
+        client = ESPNConnect()
+        return client.fetch_raw_tournament_matchups(year)
+    except Exception:
+        return []
+
+
+def _load_predictor_probabilities_for_session(payload: dict, round_name: str) -> List[dict]:
+    try:
+        client = ESPNConnect()
+        return client.fetch_predictor_probabilities_for_session(
+            int(payload["year"]),
+            {
+                "target_round": round_name,
+                "winners": payload["simulation"].get("winners", {}),
+                "results": payload["simulation"].get("results", {}),
+            },
+        )
+    except Exception:
+        return []
+
+
+def _entry_name_keys(entry) -> set[str]:
+    if isinstance(entry, dict):
+        values = [
+            entry.get("team_name"),
+            entry.get("espn_name"),
+            entry.get("ncaa_name"),
+            entry.get("team"),
+        ]
+    else:
+        values = [entry]
+    return {_name_key(value) for value in values if value}
+
+
+def _coerce_probability_percent(value) -> Optional[float]:
+    try:
+        if value is None:
+            return None
+        prob = float(value)
+    except (TypeError, ValueError):
+        return None
+    return round(max(0.0, min(100.0, prob)), 2)
+
+
+def _probability_or_default(value, default: float = 50.0) -> float:
+    prob = _coerce_probability_percent(value)
+    return round(default if prob is None else prob, 2)
+
+
+def _moneyline_or_default(value, default: int = -100) -> int:
+    try:
+        if value is None:
+            return int(default)
+        return int(round(float(value)))
+    except (TypeError, ValueError):
+        return int(default)
+
+
+def _lookup_espn_matchup(prob_rows: List[dict], team1, team2) -> dict:
+    k1 = _entry_name_keys(team1)
+    k2 = _entry_name_keys(team2)
 
     for row in prob_rows:
         a = _name_key(row.get("team1", ""))
         b = _name_key(row.get("team2", ""))
-        p = float(row.get("team1_probability", 50.0))
-        if a == k1 and b == k2:
-            return round(max(0.0, min(100.0, p)), 2)
-        if a == k2 and b == k1:
-            return round(max(0.0, min(100.0, 100.0 - p)), 2)
+        p1 = _coerce_probability_percent(row.get("team1_probability"))
+        p2 = _coerce_probability_percent(row.get("team2_probability"))
+        available = bool(row.get("probability_available")) and p1 is not None and p2 is not None
+        if p1 is None and p2 is None:
+            p1, p2 = 50.0, 50.0
+        elif p1 is None and p2 is not None:
+            p1, p2 = round(100.0 - p2, 2), p2
+            available = False
+        elif p2 is None and p1 is not None:
+            p1, p2 = p1, round(100.0 - p1, 2)
+            available = False
 
-    return 50.0
+        team1_moneyline = row.get("team1_moneyline")
+        team2_moneyline = row.get("team2_moneyline")
+
+        if a in k1 and b in k2:
+            return {
+                "available": available,
+                "team1_probability": p1,
+                "team2_probability": p2,
+                "team1_moneyline": team1_moneyline,
+                "team2_moneyline": team2_moneyline,
+                "event_id": row.get("event_id"),
+            }
+        if a in k2 and b in k1:
+            return {
+                "available": available,
+                "team1_probability": p2,
+                "team2_probability": p1,
+                "team1_moneyline": team2_moneyline,
+                "team2_moneyline": team1_moneyline,
+                "event_id": row.get("event_id"),
+            }
+
+    return {
+        "available": False,
+        "team1_probability": 50.0,
+        "team2_probability": 50.0,
+        "team1_moneyline": None,
+        "team2_moneyline": None,
+        "event_id": None,
+    }
+
+
+def _lookup_espn_probability(prob_rows: List[dict], team1, team2) -> float:
+    matchup = _lookup_espn_matchup(prob_rows, team1, team2)
+    return _probability_or_default(matchup.get("team1_probability"))
+
+
+
+
+def _lookup_scoreboard_matchup(raw_rows: List[dict], team1, team2) -> dict:
+    k1 = _entry_name_keys(team1)
+    k2 = _entry_name_keys(team2)
+
+    for row in raw_rows:
+        a = _name_key(row.get("team1", ""))
+        b = _name_key(row.get("team2", ""))
+        if a in k1 and b in k2:
+            return {
+                "available": True,
+                "team1_moneyline": row.get("team1_moneyline"),
+                "team2_moneyline": row.get("team2_moneyline"),
+                "event_id": row.get("event_id"),
+            }
+        if a in k2 and b in k1:
+            return {
+                "available": True,
+                "team1_moneyline": row.get("team2_moneyline"),
+                "team2_moneyline": row.get("team1_moneyline"),
+                "event_id": row.get("event_id"),
+            }
+
+    return {
+        "available": False,
+        "team1_moneyline": None,
+        "team2_moneyline": None,
+        "event_id": None,
+    }
 
 
 def _kenpom_strength(entry: dict) -> float:
@@ -192,6 +331,7 @@ def _init_session_payload(year: int) -> dict:
             "winners": {},
             "round_inputs": {},
         },
+        "saved_brackets": [],
     }
 
 
@@ -208,6 +348,7 @@ def load_session_payload(year: int) -> dict:
             sim.setdefault("results", {})
             sim.setdefault("winners", {})
             sim.setdefault("round_inputs", {})
+            payload.setdefault("saved_brackets", [])
             return payload
 
     payload = _init_session_payload(year)
@@ -263,6 +404,9 @@ def _seed_row_from_option(division: str, seed: int, option: dict) -> dict:
         "seed": int(seed),
         "team_id": option.get("team_id"),
         "team_name": option.get("team_name") or "",
+        "espn_name": option.get("espn_name"),
+        "espn_id": option.get("espn_id"),
+        "ncaa_name": option.get("ncaa_name"),
         "adj_em": float(option.get("adj_em") or 0.0),
         "luck": float(option.get("luck") or 0.0),
         "sos": float(option.get("sos") or 0.0),
@@ -290,6 +434,97 @@ def _seed_editor_revision(source_key: str) -> int:
 def _bump_seed_editor_revision(source_key: str):
     state_key = f"seed_editor_revision_{source_key}"
     st.session_state[state_key] = _seed_editor_revision(source_key) + 1
+
+
+def _sim_editor_revision() -> int:
+    if "sim_editor_revision" not in st.session_state:
+        st.session_state.sim_editor_revision = 0
+    return int(st.session_state.sim_editor_revision)
+
+
+def _bump_sim_editor_revision():
+    st.session_state.sim_editor_revision = _sim_editor_revision() + 1
+
+def _build_probability_rows(
+    payload: dict,
+    round_name: str,
+    pending_games: List[dict],
+    default_source: str,
+    prob_rows: Optional[List[dict]] = None,
+    raw_rows: Optional[List[dict]] = None,
+    overwrite_sim_from_espn: bool = False,
+) -> List[dict]:
+    prob_rows = prob_rows if prob_rows is not None else _load_predictor_probabilities_for_session(payload, round_name)
+    raw_rows = raw_rows if raw_rows is not None else _load_scoreboard_matchups(int(payload["year"]))
+    payload["espn_probabilities"] = prob_rows
+
+    prior_rows = payload["simulation"].setdefault("round_inputs", {}).get(round_name, [])
+    existing_map = {r.get("row_key"): r for r in prior_rows}
+    built_rows: List[dict] = []
+
+    for game in pending_games:
+        division = game["division"]
+        team1_name = game["team1"]["team_name"]
+        team2_name = game["team2"]["team_name"]
+        matchup_key = _matchup_key(division, team1_name, team2_name)
+        espn_match = _lookup_espn_matchup(prob_rows, game["team1"], game["team2"])
+        scoreboard_match = _lookup_scoreboard_matchup(raw_rows, game["team1"], game["team2"])
+
+        team_specs = [
+            (game["team1"], game["team2"], team1_name, 1),
+            (game["team2"], game["team1"], team2_name, 2),
+        ]
+
+        for team_entry, opponent_entry, team_name, team_index in team_specs:
+            row_key = f"{matchup_key}|{_name_key(team_name)}"
+            existing_row = existing_map.get(row_key, {})
+            kenpom_prob = _probability_or_default(_lookup_kenpom_probability(team_entry, opponent_entry))
+            espn_prob = _probability_or_default(espn_match.get(f"team{team_index}_probability"))
+            moneyline = _moneyline_or_default(scoreboard_match.get(f"team{team_index}_moneyline"))
+            default_sim = espn_prob if default_source == "ESPN Probability" else kenpom_prob
+
+            if overwrite_sim_from_espn and default_source == "ESPN Probability":
+                sim_prob = espn_prob
+            else:
+                sim_prob = _probability_or_default(existing_row.get("simulation_probability"), default_sim)
+
+            built_rows.append(
+                {
+                    "row_key": row_key,
+                    "matchup_key": matchup_key,
+                    "division": division,
+                    "team": team_name,
+                    "seed": int(team_entry.get("seed", 0) or 0),
+                    "espn_probability": _probability_or_default(espn_prob),
+                    "espn_available": bool(espn_match.get("available")),
+                    "espn_event_id": espn_match.get("event_id") or scoreboard_match.get("event_id"),
+                    "kenpom_probability": _probability_or_default(kenpom_prob),
+                    "moneyline": _moneyline_or_default(moneyline),
+                    "simulation_probability": _probability_or_default(sim_prob, default_sim),
+                }
+            )
+
+    return built_rows
+
+
+
+
+def _refresh_round_espn_probabilities(payload: dict, round_name: str, pending_games: List[dict], default_source: str) -> List[dict]:
+    predictor_rows = _load_predictor_probabilities_for_session(payload, round_name)
+    raw_rows = _load_scoreboard_matchups(int(payload["year"]))
+    payload["espn_probabilities"] = predictor_rows
+    updated_rows = _build_probability_rows(
+        payload,
+        round_name,
+        pending_games,
+        default_source,
+        prob_rows=predictor_rows,
+        raw_rows=raw_rows,
+        overwrite_sim_from_espn=True,
+    )
+    payload["simulation"].setdefault("round_inputs", {})[round_name] = updated_rows
+    save_session_payload(payload)
+    return updated_rows
 
 
 def build_first_round_games(seed_rows: List[dict]) -> List[dict]:
@@ -324,8 +559,8 @@ def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List
         team1_probs = game.get("team1_probs", {})
         team2_probs = game.get("team2_probs", {})
 
-        sim1 = max(0.0, min(100.0, float(team1_probs.get("simulation_probability", 50.0))))
-        sim2 = max(0.0, min(100.0, float(team2_probs.get("simulation_probability", 50.0))))
+        sim1 = _probability_or_default(team1_probs.get("simulation_probability"))
+        sim2 = _probability_or_default(team2_probs.get("simulation_probability"))
         denom = sim1 + sim2
         p1 = (sim1 / denom) if denom > 0 else 0.5
 
@@ -343,10 +578,10 @@ def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List
                 "team2": t2_entry.get("team_name"),
                 "winner": winner_entry.get("team_name"),
                 "loser": loser_entry.get("team_name"),
-                "winner_espn_probability": round(float(winner_probs.get("espn_probability", 50.0)), 2),
-                "winner_kenpom_probability": round(float(winner_probs.get("kenpom_probability", 50.0)), 2),
-                "winner_simulation_probability": round(float(winner_probs.get("simulation_probability", 50.0)), 2),
-                "winner_moneyline": int(round(float(winner_probs.get("moneyline", -100)))),
+                "winner_espn_probability": _probability_or_default(winner_probs.get("espn_probability")),
+                "winner_kenpom_probability": _probability_or_default(winner_probs.get("kenpom_probability")),
+                "winner_simulation_probability": _probability_or_default(winner_probs.get("simulation_probability")),
+                "winner_moneyline": _moneyline_or_default(winner_probs.get("moneyline")),
             }
         )
         winners.append({"division": game.get("division", ""), "team": winner_entry})
@@ -426,13 +661,28 @@ def _sync_probability_pair(changed_key: str, other_key: str):
     st.session_state[other_key] = round(100.0 - changed_value, 2)
 
 
-def _render_games_from_results(results: List[dict]):
+def _render_games_from_results(results: List[dict], use_expanders: bool = True):
     if not results:
         st.info("No games to display yet.")
         return
 
     for division, div_games in _games_by_division(results).items():
-        with st.expander(division.upper(), expanded=False):
+        if use_expanders:
+            with st.expander(division.upper(), expanded=False):
+                for i, game in enumerate(div_games, start=1):
+                    st.markdown(
+                        f"""
+                        <div class="game-card">
+                            <div><b>Game {i}:</b> <b>{game['team1']}</b> vs <b>{game['team2']}</b></div>
+                            <div class="winner">Winner: {game['winner']}</div>
+                            <div>Winner ESPN: {float(game['winner_espn_probability']):.2f}% | Winner KenPom: {float(game['winner_kenpom_probability']):.2f}%</div>
+                            <div>Winner Simulation: {float(game['winner_simulation_probability']):.2f}% | Winner Moneyline: {int(game['winner_moneyline'])}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+        else:
+            st.markdown(f"**{division.upper()}**")
             for i, game in enumerate(div_games, start=1):
                 st.markdown(
                     f"""
@@ -448,12 +698,16 @@ def _render_games_from_results(results: List[dict]):
 
 
 def _render_probability_editor(payload: dict, round_name: str, pending_games: List[dict], default_source: str) -> List[dict]:
-    prob_rows = payload.get("espn_probabilities", [])
     prior_rows = payload["simulation"].setdefault("round_inputs", {}).get(round_name, [])
-    existing_map = {r.get("row_key"): r for r in prior_rows}
+    if not prior_rows:
+        prior_rows = _build_probability_rows(payload, round_name, pending_games, default_source)
+        payload["simulation"]["round_inputs"][round_name] = prior_rows
+        save_session_payload(payload)
 
+    existing_map = {r.get("row_key"): r for r in prior_rows}
     edited_rows: List[dict] = []
     did_change = False
+    revision = _sim_editor_revision()
 
     for division, div_games in _games_by_division(pending_games).items():
         with st.expander(division.upper(), expanded=False):
@@ -461,36 +715,10 @@ def _render_probability_editor(payload: dict, round_name: str, pending_games: Li
                 team1_name = game["team1"]["team_name"]
                 team2_name = game["team2"]["team_name"]
                 matchup_key = _matchup_key(division, team1_name, team2_name)
-
-                team_specs = [
-                    (game["team1"], game["team2"], team1_name),
-                    (game["team2"], game["team1"], team2_name),
+                row_models = [
+                    existing_map.get(f"{matchup_key}|{_name_key(team1_name)}", {}),
+                    existing_map.get(f"{matchup_key}|{_name_key(team2_name)}", {}),
                 ]
-
-                row_models = []
-                for team_entry, opponent_entry, team_name in team_specs:
-                    row_key = f"{matchup_key}|{_name_key(team_name)}"
-                    espn_prob = _lookup_espn_probability(prob_rows, team_name, opponent_entry["team_name"])
-                    kenpom_prob = _lookup_kenpom_probability(team_entry, opponent_entry)
-
-                    existing_row = existing_map.get(row_key, {})
-                    default_sim = espn_prob if default_source == "ESPN Probability" else kenpom_prob
-                    sim_prob = existing_row.get("simulation_probability", default_sim)
-                    moneyline = existing_row.get("moneyline", -100)
-
-                    row_models.append(
-                        {
-                            "row_key": row_key,
-                            "matchup_key": matchup_key,
-                            "division": division,
-                            "team": team_name,
-                            "seed": int(team_entry.get("seed", 0) or 0),
-                            "espn_probability": round(float(espn_prob), 2),
-                            "kenpom_probability": round(float(kenpom_prob), 2),
-                            "moneyline": int(round(float(moneyline))),
-                            "simulation_probability": round(float(sim_prob), 2),
-                        }
-                    )
 
                 shade = "#f3f7ff" if game_idx % 2 == 1 else "#f4fbf2"
                 st.markdown(
@@ -498,18 +726,22 @@ def _render_probability_editor(payload: dict, round_name: str, pending_games: Li
                     unsafe_allow_html=True,
                 )
 
+                matchup_available = bool(row_models[0].get("espn_available", False) and row_models[1].get("espn_available", False))
                 header_cols = st.columns([0.8, 2.2, 1.2, 1.2, 1.0, 1.6])
                 header_cols[0].markdown("**Seed**")
                 header_cols[1].markdown("**Team**")
-                header_cols[2].markdown("**ESPN**")
+                if matchup_available:
+                    header_cols[2].markdown("**ESPN**")
+                else:
+                    header_cols[2].markdown('<span style="color:#c62828;font-weight:700;">ESPN !</span>', unsafe_allow_html=True)
                 header_cols[3].markdown("**KenPom**")
                 header_cols[4].markdown("**Moneyline**")
                 header_cols[5].markdown("**Simulation Probability**")
 
-                team1_default = round(float(row_models[0]["simulation_probability"]), 2)
-                team2_default = round(float(row_models[1]["simulation_probability"]), 2)
-                team1_key = f"sim_prob_{round_name}_{_name_key(division)}_{game_idx}_1"
-                team2_key = f"sim_prob_{round_name}_{_name_key(division)}_{game_idx}_2"
+                team1_default = _probability_or_default(row_models[0].get("simulation_probability"))
+                team2_default = _probability_or_default(row_models[1].get("simulation_probability"))
+                team1_key = f"sim_prob_{revision}_{round_name}_{_name_key(division)}_{game_idx}_1"
+                team2_key = f"sim_prob_{revision}_{round_name}_{_name_key(division)}_{game_idx}_2"
 
                 if team1_key not in st.session_state:
                     st.session_state[team1_key] = team1_default
@@ -517,11 +749,11 @@ def _render_probability_editor(payload: dict, round_name: str, pending_games: Li
                     st.session_state[team2_key] = team2_default
 
                 row1_cols = st.columns([0.8, 2.2, 1.2, 1.2, 1.0, 1.6])
-                row1_cols[0].write(str(row_models[0]["seed"]))
-                row1_cols[1].write(row_models[0]["team"])
-                row1_cols[2].write(f'{row_models[0]["espn_probability"]:.2f}%')
-                row1_cols[3].write(f'{row_models[0]["kenpom_probability"]:.2f}%')
-                row1_cols[4].write(str(row_models[0]["moneyline"]))
+                row1_cols[0].write(str(int(row_models[0].get("seed", 0))))
+                row1_cols[1].write(row_models[0].get("team", team1_name))
+                row1_cols[2].write(f'{_probability_or_default(row_models[0].get("espn_probability")):.2f}%' )
+                row1_cols[3].write(f'{_probability_or_default(row_models[0].get("kenpom_probability")):.2f}%' )
+                row1_cols[4].write(str(_moneyline_or_default(row_models[0].get("moneyline"))))
                 team1_sim = row1_cols[5].number_input(
                     f"Team 1 Simulation Probability {division} Game {game_idx}",
                     min_value=0.0,
@@ -535,11 +767,11 @@ def _render_probability_editor(payload: dict, round_name: str, pending_games: Li
                 )
 
                 row2_cols = st.columns([0.8, 2.2, 1.2, 1.2, 1.0, 1.6])
-                row2_cols[0].write(str(row_models[1]["seed"]))
-                row2_cols[1].write(row_models[1]["team"])
-                row2_cols[2].write(f'{row_models[1]["espn_probability"]:.2f}%')
-                row2_cols[3].write(f'{row_models[1]["kenpom_probability"]:.2f}%')
-                row2_cols[4].write(str(row_models[1]["moneyline"]))
+                row2_cols[0].write(str(int(row_models[1].get("seed", 0))))
+                row2_cols[1].write(row_models[1].get("team", team2_name))
+                row2_cols[2].write(f'{_probability_or_default(row_models[1].get("espn_probability")):.2f}%' )
+                row2_cols[3].write(f'{_probability_or_default(row_models[1].get("kenpom_probability")):.2f}%' )
+                row2_cols[4].write(str(_moneyline_or_default(row_models[1].get("moneyline"))))
                 team2_sim = row2_cols[5].number_input(
                     f"Team 2 Simulation Probability {division} Game {game_idx}",
                     min_value=0.0,
@@ -556,23 +788,24 @@ def _render_probability_editor(payload: dict, round_name: str, pending_games: Li
                 team2_sim = _clamp_probability(team2_sim)
                 changed1 = team1_sim != team1_default
                 changed2 = team2_sim != team2_default
-
                 if changed1 or changed2:
                     did_change = True
 
-                for i, base in enumerate(row_models):
-                    sim_value = team1_sim if i == 0 else team2_sim
+                for idx, base in enumerate(row_models):
+                    sim_value = team1_sim if idx == 0 else team2_sim
                     edited_rows.append(
                         {
-                            "row_key": base["row_key"],
-                            "matchup_key": base["matchup_key"],
-                            "division": base["division"],
-                            "team": base["team"],
-                            "seed": int(base["seed"]),
-                            "espn_probability": round(float(base["espn_probability"]), 2),
-                            "kenpom_probability": round(float(base["kenpom_probability"]), 2),
-                            "moneyline": int(round(float(base["moneyline"]))),
-                            "simulation_probability": round(float(sim_value), 2),
+                            "row_key": base.get("row_key"),
+                            "matchup_key": base.get("matchup_key"),
+                            "division": base.get("division"),
+                            "team": base.get("team"),
+                            "seed": int(base.get("seed", 0)),
+                            "espn_probability": _probability_or_default(base.get("espn_probability")),
+                            "espn_available": bool(base.get("espn_available", False)),
+                            "espn_event_id": base.get("espn_event_id"),
+                            "kenpom_probability": _probability_or_default(base.get("kenpom_probability")),
+                            "moneyline": _moneyline_or_default(base.get("moneyline")),
+                            "simulation_probability": _probability_or_default(sim_value),
                         }
                     )
 
@@ -592,6 +825,57 @@ def _reset_simulation_from_round(payload: dict, start_round_index: int):
         sim.setdefault("round_inputs", {}).pop(round_name, None)
 
     sim["completed_rounds"] = start_round_index
+
+
+def _champion_name_from_results(results_by_round: dict) -> str:
+    championship = results_by_round.get("Championship", [])
+    if championship:
+        return championship[0].get("winner", "Unknown")
+    return "Unknown"
+
+
+def _build_saved_bracket_snapshot(payload: dict, bracket_name: str) -> dict:
+    sim = payload.get("simulation", {})
+    timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
+    return {
+        "id": f"bracket_{uuid.uuid4().hex[:10]}",
+        "name": bracket_name,
+        "saved_at": timestamp,
+        "year": int(payload.get("year", 0)),
+        "source": sim.get("source", "kenpom"),
+        "default_probability_source": sim.get("default_probability_source", "ESPN Probability"),
+        "champion": _champion_name_from_results(sim.get("results", {})),
+        "results": json.loads(json.dumps(sim.get("results", {}))),
+        "seeding": json.loads(json.dumps(payload.get("seeding", {}).get(sim.get("source", "kenpom"), []))),
+    }
+
+
+def _save_current_bracket(payload: dict, bracket_name: str) -> dict:
+    snapshot = _build_saved_bracket_snapshot(payload, bracket_name)
+    payload.setdefault("saved_brackets", []).append(snapshot)
+    save_session_payload(payload)
+    return snapshot
+
+
+def view_brackets_page(payload: dict):
+    st.subheader("View Brackets")
+    saved_brackets = list(reversed(payload.get("saved_brackets", [])))
+
+    if not saved_brackets:
+        st.info("No saved brackets yet. Finish the Championship round in Run Simulation and save a bracket.")
+        return
+
+    for bracket in saved_brackets:
+        champion = bracket.get("champion", "Unknown")
+        label = f"{bracket.get('name', 'Saved Bracket')} | {bracket.get('saved_at', '')} | Champion: {champion}"
+        with st.expander(label, expanded=False):
+            st.caption(
+                f"Year: {bracket.get('year')} | Source: {str(bracket.get('source', '')).title()} | Default Simulation Probability: {bracket.get('default_probability_source', '')}"
+            )
+            results_by_round = bracket.get("results", {})
+            for round_name in ROUND_NAMES:
+                st.markdown(f"**{round_name}**")
+                _render_games_from_results(results_by_round.get(round_name, []), use_expanders=False)
 
 
 def view_seeding_page(payload: dict):
@@ -720,6 +1004,7 @@ def run_simulation_page(payload: dict):
     if default_source != prior_default_source:
         payload["simulation"]["round_inputs"] = {}
         save_session_payload(payload)
+        _bump_sim_editor_revision()
         st.rerun()
 
     completed = int(payload["simulation"].get("completed_rounds", 0))
@@ -730,15 +1015,22 @@ def run_simulation_page(payload: dict):
             round_results = payload["simulation"].get("results", {}).get(round_name)
             round_has_results = bool(round_results)
 
-            action_cols = st.columns([1, 1, 5])
+            action_cols = st.columns([1.2, 1.2, 1.8, 4])
             with action_cols[0]:
                 calculate_clicked = st.button(f"Calculate {round_name}", key=f"calc_{i}", disabled=i > completed)
             with action_cols[1]:
                 reset_clicked = st.button(f"Reset {round_name}", key=f"reset_{i}", disabled=not round_has_results)
+            with action_cols[2]:
+                update_espn_clicked = st.button(
+                    f"Update ESPN Probabilities",
+                    key=f"update_espn_{i}",
+                    disabled=i != completed or round_has_results,
+                )
 
             if reset_clicked:
                 _reset_simulation_from_round(payload, i)
                 save_session_payload(payload)
+                _bump_sim_editor_revision()
                 st.rerun()
 
             if i < completed and round_has_results:
@@ -757,6 +1049,11 @@ def run_simulation_page(payload: dict):
                 continue
 
             pending_games = _pending_games(payload, source_key, i)
+            if update_espn_clicked:
+                _refresh_round_espn_probabilities(payload, round_name, pending_games, default_source)
+                _bump_sim_editor_revision()
+                st.rerun()
+
             edited_prob_rows = _render_probability_editor(payload, round_name, pending_games, default_source)
 
             prob_map = {r["row_key"]: r for r in edited_prob_rows}
@@ -772,16 +1069,16 @@ def run_simulation_page(payload: dict):
                     {
                         **g,
                         "team1_probs": {
-                            "espn_probability": float(r1.get("espn_probability", 50.0)),
-                            "kenpom_probability": float(r1.get("kenpom_probability", 50.0)),
-                            "simulation_probability": float(r1.get("simulation_probability", 50.0)),
-                            "moneyline": float(r1.get("moneyline", -100)),
+                            "espn_probability": _probability_or_default(r1.get("espn_probability")),
+                            "kenpom_probability": _probability_or_default(r1.get("kenpom_probability")),
+                            "simulation_probability": _probability_or_default(r1.get("simulation_probability")),
+                            "moneyline": _moneyline_or_default(r1.get("moneyline")),
                         },
                         "team2_probs": {
-                            "espn_probability": float(r2.get("espn_probability", 50.0)),
-                            "kenpom_probability": float(r2.get("kenpom_probability", 50.0)),
-                            "simulation_probability": float(r2.get("simulation_probability", 50.0)),
-                            "moneyline": float(r2.get("moneyline", -100)),
+                            "espn_probability": _probability_or_default(r2.get("espn_probability")),
+                            "kenpom_probability": _probability_or_default(r2.get("kenpom_probability")),
+                            "simulation_probability": _probability_or_default(r2.get("simulation_probability")),
+                            "moneyline": _moneyline_or_default(r2.get("moneyline")),
                         },
                     }
                 )
@@ -794,10 +1091,77 @@ def run_simulation_page(payload: dict):
                 save_session_payload(payload)
                 st.rerun()
 
+    championship_results = payload["simulation"].get("results", {}).get("Championship", [])
+    if championship_results:
+        st.markdown("---")
+        champion = championship_results[0].get("winner", "Unknown")
+        next_index = len(payload.get("saved_brackets", [])) + 1
+        default_name = f"2026 Bracket {next_index}"
+        save_cols = st.columns([3, 1, 4])
+        bracket_name = save_cols[0].text_input("Bracket Name", value=default_name, key="save_bracket_name")
+        save_clicked = save_cols[1].button("Save Bracket", key="save_bracket_button")
+        save_cols[2].caption(f"Champion: {champion}")
+
+        if save_clicked:
+            snapshot = _save_current_bracket(payload, bracket_name.strip() or default_name)
+            st.success(f"Saved bracket '{snapshot['name']}' with champion {snapshot['champion']}.")
+
 
 def past_tournaments_page():
     st.subheader("Past Tournaments")
     st.info("Historical tournament workflows can be added here. This section is scaffolded for the new hierarchy.")
+
+
+def admin_debug_espn_connection_page():
+    st.subheader("Debug ESPN Connection")
+    st.caption("Select a first-round matchup and inspect the raw ESPN matchup payload, whether or not probabilities are available yet.")
+
+    year = st.number_input("Season Year", min_value=2002, max_value=2100, value=2026, step=1, key="admin_debug_espn_year")
+
+    if "espn_debug_result" not in st.session_state:
+        st.session_state.espn_debug_result = None
+
+    seed_rows = _load_seed_rows_from_sql(int(year))
+    if not seed_rows:
+        st.info("No seeding data found for this year.")
+        return
+
+    first_round_games = build_first_round_games(seed_rows)
+    if not first_round_games:
+        st.info("No first-round matchups are available for this year.")
+        return
+
+    game_options = [
+        {
+            "label": f"{game['division']}: {game['team1']['team_name']} vs {game['team2']['team_name']}",
+            "division": game["division"],
+            "team1": game["team1"]["team_name"],
+            "team2": game["team2"]["team_name"],
+        }
+        for game in first_round_games
+    ]
+
+    selected_game = st.selectbox(
+        "Game",
+        options=game_options,
+        format_func=lambda option: option["label"],
+        key="admin_debug_espn_game",
+    )
+
+    if selected_game and st.button("Test", key="admin_debug_espn_test"):
+        with st.spinner("Querying raw ESPN matchup data..."):
+            try:
+                client = ESPNConnect()
+                st.session_state.espn_debug_result = client.debug_raw_matchup(
+                    int(year),
+                    selected_game["team1"],
+                    selected_game["team2"],
+                )
+            except Exception as exc:
+                st.session_state.espn_debug_result = {"error": str(exc)}
+
+    if st.session_state.espn_debug_result is not None:
+        st.json(st.session_state.espn_debug_result)
 
 
 def admin_update_team_references_page():
@@ -889,17 +1253,22 @@ menu = st.sidebar.selectbox("Hierarchy", ["March Madness", "Past Tournaments", "
 if menu == "March Madness":
     year = 2026
     payload = load_session_payload(year)
-    subpage = st.sidebar.selectbox("March Madness 2026", ["View Seeding", "Run Simulation"])
+    subpage = st.sidebar.selectbox("March Madness 2026", ["View Seeding", "Run Simulation", "View Brackets"])
 
     st.caption(f"Session file: {str(_session_file())}")
 
     if subpage == "View Seeding":
         view_seeding_page(payload)
-    else:
+    elif subpage == "Run Simulation":
         run_simulation_page(payload)
+    else:
+        view_brackets_page(payload)
 elif menu == "Past Tournaments":
     past_tournaments_page()
 elif menu == "Admin":
-    admin_subpage = st.sidebar.selectbox("Admin", ["Update Team References"])
+    admin_subpage = st.sidebar.selectbox("Admin", ["Update Team References", "Debug ESPN Connection"])
     if admin_subpage == "Update Team References":
         admin_update_team_references_page()
+    else:
+        admin_debug_espn_connection_page()
+
