@@ -556,9 +556,10 @@ def _to_team_obj(entry: dict) -> Team:
     )
 
 
-def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List[dict]]:
+def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List[dict], int]:
     results = []
     winners = []
+    upset_count = 0
 
     for game in games:
         t1_entry = game["team1"]
@@ -579,6 +580,11 @@ def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List
             winner_entry, loser_entry = t2_entry, t1_entry
             winner_probs = team2_probs
 
+        winner_seed = int(winner_entry.get("seed") or 0)
+        loser_seed = int(loser_entry.get("seed") or 0)
+        if winner_seed > loser_seed > 0:
+            upset_count += 1
+
         results.append(
             {
                 "division": game.get("division", ""),
@@ -594,7 +600,7 @@ def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List
         )
         winners.append({"division": game.get("division", ""), "team": winner_entry})
 
-    return results, winners
+    return results, winners, upset_count
 
 
 def _build_next_games_from_winners(round_index: int, winners: List[dict]) -> List[dict]:
@@ -854,6 +860,7 @@ def _build_saved_bracket_snapshot(payload: dict, bracket_name: str) -> dict:
         "default_probability_source": sim.get("default_probability_source", "ESPN Probability"),
         "champion": _champion_name_from_results(sim.get("results", {})),
         "results": json.loads(json.dumps(sim.get("results", {}))),
+        "upset_counts": json.loads(json.dumps(sim.get("upset_counts", {}))),
         "seeding": json.loads(json.dumps(payload.get("seeding", {}).get(sim.get("source", "kenpom"), []))),
     }
 
@@ -1016,6 +1023,14 @@ def run_simulation_page(payload: dict):
         st.rerun()
 
     completed = int(payload["simulation"].get("completed_rounds", 0))
+
+    upset_counts = payload["simulation"].get("upset_counts", {})
+    st.markdown("**Upsets by Round**")
+    upset_cols = st.columns(len(ROUND_NAMES))
+    for i, round_name in enumerate(ROUND_NAMES):
+        count = upset_counts.get(round_name)
+        upset_cols[i].metric(round_name, count if count is not None else "—")
+
     tabs = st.tabs(ROUND_NAMES)
 
     for i, round_name in enumerate(ROUND_NAMES):
@@ -1092,9 +1107,10 @@ def run_simulation_page(payload: dict):
                 )
 
             if calculate_clicked:
-                results, winners = _simulate_games(calc_games, i + 1)
+                results, winners, upset_count = _simulate_games(calc_games, i + 1)
                 payload["simulation"].setdefault("results", {})[round_name] = results
                 payload["simulation"].setdefault("winners", {})[round_name] = winners
+                payload["simulation"].setdefault("upset_counts", {})[round_name] = upset_count
                 payload["simulation"]["completed_rounds"] = min(6, completed + 1)
                 save_session_payload(payload)
                 st.rerun()
