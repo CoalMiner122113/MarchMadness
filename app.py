@@ -880,17 +880,47 @@ def view_brackets_page(payload: dict):
         st.info("No saved brackets yet. Finish the Championship round in Run Simulation and save a bracket.")
         return
 
-    for bracket in saved_brackets:
-        champion = bracket.get("champion", "Unknown")
-        label = f"{bracket.get('name', 'Saved Bracket')} | {bracket.get('saved_at', '')} | Champion: {champion}"
-        with st.expander(label, expanded=False):
-            st.caption(
-                f"Year: {bracket.get('year')} | Source: {str(bracket.get('source', '')).title()} | Default Simulation Probability: {bracket.get('default_probability_source', '')}"
-            )
-            results_by_round = bracket.get("results", {})
-            for round_name in ROUND_NAMES:
-                st.markdown(f"**{round_name}**")
-                _render_games_from_results(results_by_round.get(round_name, []), use_expanders=False)
+    stats_tab, brackets_tab = st.tabs(["Stats", "Brackets"])
+
+    with stats_tab:
+        total_brackets = len(saved_brackets)
+
+        st.markdown("### Champions")
+        champion_counts: dict = {}
+        for b in saved_brackets:
+            champ = b.get("champion", "Unknown")
+            champion_counts[champ] = champion_counts.get(champ, 0) + 1
+
+        sorted_champs = sorted(champion_counts.items(), key=lambda x: x[1], reverse=True)
+        header_cols = st.columns([4, 1, 2])
+        header_cols[0].markdown("**Team**")
+        header_cols[1].markdown("**Brackets**")
+        header_cols[2].markdown("**Frequency**")
+        for champ, count in sorted_champs:
+            row = st.columns([4, 1, 2])
+            row[0].write(champ)
+            row[1].write(str(count))
+            row[2].write(f"{count / total_brackets * 100:.1f}%")
+
+        st.markdown("### Upsets")
+        bracket_upset_totals = [sum(b.get("upset_counts", {}).values()) for b in saved_brackets]
+        avg_upsets = sum(bracket_upset_totals) / len(bracket_upset_totals)
+        st.metric("Average upsets per bracket", f"{avg_upsets:.1f}")
+
+    with brackets_tab:
+        for bracket in saved_brackets:
+            champion = bracket.get("champion", "Unknown")
+            total_upsets = sum(bracket.get("upset_counts", {}).values())
+            upset_str = f" | Upsets: {total_upsets}" if bracket.get("upset_counts") else ""
+            label = f"{bracket.get('name', 'Saved Bracket')} | {bracket.get('saved_at', '')} | Champion: {champion}{upset_str}"
+            with st.expander(label, expanded=False):
+                st.caption(
+                    f"Year: {bracket.get('year')} | Source: {str(bracket.get('source', '')).title()} | Default Simulation Probability: {bracket.get('default_probability_source', '')}"
+                )
+                results_by_round = bracket.get("results", {})
+                for round_name in ROUND_NAMES:
+                    st.markdown(f"**{round_name}**")
+                    _render_games_from_results(results_by_round.get(round_name, []), use_expanders=False)
 
 
 def view_seeding_page(payload: dict):
