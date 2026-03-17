@@ -142,6 +142,7 @@ def _load_seed_rows_from_sql(year: int) -> List[dict]:
     return _sort_seed_rows(rows)
 
 
+@st.cache_data(ttl=300)
 def _load_espn_probabilities(year: int) -> List[dict]:
     try:
         client = ESPNConnect()
@@ -150,6 +151,7 @@ def _load_espn_probabilities(year: int) -> List[dict]:
         return []
 
 
+@st.cache_data(ttl=300)
 def _load_scoreboard_matchups(year: int) -> List[dict]:
     try:
         client = ESPNConnect()
@@ -158,19 +160,25 @@ def _load_scoreboard_matchups(year: int) -> List[dict]:
         return []
 
 
-def _load_predictor_probabilities_for_session(payload: dict, round_name: str) -> List[dict]:
+@st.cache_data(ttl=300)
+def _cached_predictor_probabilities(year: int, round_name: str, winners_json: str) -> List[dict]:
     try:
         client = ESPNConnect()
         return client.fetch_predictor_probabilities_for_session(
-            int(payload["year"]),
+            year,
             {
                 "target_round": round_name,
-                "winners": payload["simulation"].get("winners", {}),
-                "results": payload["simulation"].get("results", {}),
+                "winners": json.loads(winners_json),
             },
         )
     except Exception:
         return []
+
+
+def _load_predictor_probabilities_for_session(payload: dict, round_name: str) -> List[dict]:
+    winners = payload["simulation"].get("winners", {})
+    winners_json = json.dumps(winners, sort_keys=True)
+    return _cached_predictor_probabilities(int(payload["year"]), round_name, winners_json)
 
 
 def _entry_name_keys(entry) -> set[str]:
