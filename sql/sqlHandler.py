@@ -42,40 +42,6 @@ def setup():
     return getConnection(include_database=True)
 
 
-def ensure_mbbteams_unique_constraints():
-    """Ensure MBBTeams unique keys exist so team upserts do not create duplicates."""
-    conn = getConnection(include_database=True)
-    cursor = conn.cursor()
-    try:
-        constraints = [
-            ("uq_kenpom", "ALTER TABLE MBBTeams ADD CONSTRAINT uq_kenpom UNIQUE (KenPomName)"),
-            ("uq_espn", "ALTER TABLE MBBTeams ADD CONSTRAINT uq_espn UNIQUE (EspnName)"),
-            ("uq_ncaa", "ALTER TABLE MBBTeams ADD CONSTRAINT uq_ncaa UNIQUE (NcaaName)"),
-            ("uq_espn_id", "ALTER TABLE MBBTeams ADD CONSTRAINT uq_espn_id UNIQUE (EspnID)"),
-            ("uq_espn_uid", "ALTER TABLE MBBTeams ADD CONSTRAINT uq_espn_uid UNIQUE (EspnUID)"),
-        ]
-        for idx_name, ddl in constraints:
-            cursor.execute(
-                """
-                SELECT COUNT(*)
-                FROM information_schema.STATISTICS
-                WHERE TABLE_SCHEMA = DATABASE()
-                  AND TABLE_NAME = 'MBBTeams'
-                  AND INDEX_NAME = %s
-                """,
-                (idx_name,),
-            )
-            if cursor.fetchone()[0] == 0:
-                cursor.execute(ddl)
-        conn.commit()
-    except Error as e:
-        conn.rollback()
-        raise RuntimeError(f"ensure_mbbteams_unique_constraints failed: {e}") from e
-    finally:
-        cursor.close()
-        conn.close()
-
-
 def ensure_teamstats_fk_targets_mbbteams():
     """Repair TeamStatsByYear.TeamID FK if it still references oldmbbteams."""
     conn = getConnection(include_database=True)
@@ -179,7 +145,6 @@ def _find_team_id(
 
 def uploadToSQL(arr, year: int):
     ensure_teamstats_fk_targets_mbbteams()
-    ensure_mbbteams_unique_constraints()
 
     if arr is None:
         return
@@ -384,208 +349,6 @@ def getTeamsMissingEspnName(limit: int = 100) -> List[dict]:
         conn.close()
 
 
-def _name_key(value: Optional[str]) -> str:
-    if not value:
-        return ""
-    return "".join(ch for ch in value.lower() if ch.isalnum())
-
-
-TEAM_REFERENCE_ALIASES = {
-    _name_key("Saint Mary's"): ["Saint Mary's Gaels", "Saint Mary's"],
-    _name_key("Ole Miss"): ["Mississippi Rebels", "Ole Miss Rebels"],
-    _name_key("VCU"): ["VCU Rams"],
-    _name_key("UConn"): ["Connecticut Huskies", "UConn Huskies"],
-    _name_key("SMU"): ["SMU Mustangs"],
-    _name_key("BYU"): ["BYU Cougars"],
-    _name_key("NC State"): ["NC State Wolfpack", "North Carolina State Wolfpack"],
-    _name_key("N.C. State"): ["NC State Wolfpack", "North Carolina State Wolfpack"],
-    _name_key("Pitt"): ["Pittsburgh Panthers", "Pitt Panthers"],
-    _name_key("USC"): ["USC Trojans"],
-}
-
-
-def _has_existing_espn_reference(row: dict) -> bool:
-    return any(
-        _normalize_name(row.get(field))
-        for field in ("EspnName", "EspnID", "EspnUID")
-    )
-
-
-def _build_espn_candidate_lookup(espn_teams: Iterable[dict]) -> Dict[str, List[dict]]:
-    lookup: Dict[str, List[dict]] = {}
-    for row in espn_teams:
-        keys = {
-            _name_key(row.get("espn_name")),
-            _name_key(row.get("display_name")),
-            _name_key(row.get("short_name")),
-        }
-        abbreviation = _normalize_name(row.get("abbreviation"))
-        if abbreviation:
-            keys.add(_name_key(abbreviation))
-
-        for key in keys:
-            if not key:
-                continue
-            lookup.setdefault(key, []).append(row)
-    return lookup
-
-
-def fixTeamReferences(year: Optional[int] = None) -> dict:
-    from scraping.espnConnect import ESPNConnect
-
-    del year  # reserved for future season-specific reference logic
-
-    rows = getMBBTeams()
-    client = ESPNConnect()
-    espn_teams = client.fetch_team_catalog(limit=500)
-    candidate_lookup = _build_espn_candidate_lookup(espn_teams)
-
-    mappings: List[dict] = []
-    unmatched: List[dict] = []
-    ambiguous: List[dict] = []
-    skipped_existing = 0
-
-    for row in rows:
-        if _has_existing_espn_reference(row):
-            skipped_existing += 1
-            continue
-
-        kenpom_name = row.get("KenPomName") or ""
-        lookup_keys = [_name_key(kenpom_name)]
-        lookup_keys.extend(_name_key(alias) for alias in TEAM_REFERENCE_ALIASES.get(_name_key(kenpom_name), []))
-
-        matches: List[dict] = []
-        seen_ids = set()
-        for key in lookup_keys:
-            for candidate in candidate_lookup.get(key, []):
-                candidate_id = str(candidate.get("espn_id") or "")
-                if candidate_id in seen_ids:
-                    continue
-                seen_ids.add(candidate_id)
-                matches.append(candidate)
-
-        if not matches:
-            unmatched.append(
-                {
-                    "TeamID": row.get("TeamID"),
-                    "KenPomName": kenpom_name,
-                    "EspnID": row.get("EspnID"),
-                    "EspnName": row.get("EspnName"),
-                }
-            )
-            continue
-
-        if len(matches) > 1:
-            ambiguous.append(
-                {
-                    "TeamID": row.get("TeamID"),
-                    "KenPomName": kenpom_name,
-                    "EspnID": row.get("EspnID"),
-                    "EspnName": row.get("EspnName"),
-                    "candidate_names": [m.get("espn_name") for m in matches],
-                }
-            )
-            continue
-
-        match = matches[0]
-        mappings.append(
-            {
-                "team_id": row.get("TeamID"),
-                "kenpom_name": kenpom_name,
-                "espn_name": match.get("espn_name"),
-                "espn_id": str(match.get("espn_id")) if match.get("espn_id") is not None else None,
-                "espn_uid": match.get("espn_uid"),
-                "ncaa_name": row.get("NcaaName") or kenpom_name,
-            }
-        )
-
-    if mappings:
-        upsertTeamNameMappings(mappings)
-
-    return {
-        "matched": len(mappings),
-        "skipped_existing": skipped_existing,
-        "unmatched": len(unmatched),
-        "ambiguous": len(ambiguous),
-        "unmatched_rows": unmatched,
-        "ambiguous_rows": ambiguous,
-    }
-
-
-def replaceSeedsByYear(seed_rows: Iterable[dict], year: int):
-    conn = getConnection(include_database=True)
-    cursor = conn.cursor()
-    try:
-        cursor.execute("DELETE FROM SeedByYear WHERE Year = %s", (int(year),))
-
-        for row in seed_rows:
-            team_id = row.get("team_id")
-            team_name = _normalize_name(row.get("team_name") or row.get("kenpom_name"))
-            espn_name = _normalize_name(row.get("espn_name"))
-            ncaa_name = _normalize_name(row.get("ncaa_name"))
-            espn_id = _normalize_name(row.get("espn_id") or row.get("EspnID"))
-            espn_uid = _normalize_name(row.get("espn_uid") or row.get("EspnUID"))
-
-            if team_id is not None:
-                resolved_team_id = int(team_id)
-            else:
-                resolved_team_id = _find_team_id(
-                    cursor,
-                    kenpom_name=team_name,
-                    espn_name=espn_name,
-                    ncaa_name=ncaa_name,
-                    espn_id=espn_id,
-                    espn_uid=espn_uid,
-                )
-
-            if resolved_team_id is None:
-                if not team_name:
-                    team_name = espn_name
-                if not team_name:
-                    raise ValueError("Unable to resolve team for seed row.")
-                resolved_team_id = _upsert_team(
-                    cursor,
-                    team_name,
-                    espn_name=espn_name,
-                    ncaa_name=ncaa_name,
-                    espn_id=espn_id,
-                    espn_uid=espn_uid,
-                )
-
-            if row.get("division_id") is not None:
-                division_id = int(row["division_id"])
-            else:
-                division_name = _normalize_name(row.get("division_name") or row.get("division"))
-                if not division_name:
-                    raise ValueError("Seed row must include division_id or division_name.")
-                division_id = DIVISION_NAME_TO_ID.get(division_name.lower())
-                if division_id is None:
-                    cursor.execute(
-                        "SELECT DivisionID FROM Divisions WHERE DivisionName = %s",
-                        (division_name,),
-                    )
-                    found = cursor.fetchone()
-                    if not found:
-                        raise ValueError(f"Unknown division: {division_name}")
-                    division_id = int(found[0])
-
-            cursor.execute(
-                """
-                INSERT INTO SeedByYear (TeamID, Seed, DivisionID, Year)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (resolved_team_id, int(row["seed"]), division_id, int(year)),
-            )
-
-        conn.commit()
-    except Error as e:
-        conn.rollback()
-        raise RuntimeError(f"replaceSeedsByYear failed: {e}") from e
-    finally:
-        cursor.close()
-        conn.close()
-
-
 def upsertSeedsByYear(seed_rows: Iterable[dict], year: int):
     conn = getConnection(include_database=True)
     cursor = conn.cursor()
@@ -744,13 +507,19 @@ def upsertTournamentResult(team_name: str, year: int, round_reached: str):
         conn.close()
 
 
+def _name_key(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    return "".join(ch for ch in value.lower() if ch.isalnum())
+
+
 def getMBBTeams() -> List[dict]:
     conn = getConnection(include_database=True)
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute(
             """
-            SELECT TeamID, KenPomName, EspnName, EspnID, EspnUID, NcaaName
+            SELECT TeamID, KenPomName, EspnID, NcaaName
             FROM MBBTeams
             ORDER BY KenPomName
             """
@@ -794,10 +563,105 @@ def updateTeamReferences(team_rows: Iterable[dict]):
         conn.close()
 
 
-def setupmbbteams(year: Optional[int] = None) -> dict:
-    ensure_teamstats_fk_targets_mbbteams()
-    ensure_mbbteams_unique_constraints()
+def replaceSeedsByYear(seed_rows: Iterable[dict], year: int):
+    """Delete all seeds for *year* then insert the provided rows."""
+    conn = getConnection(include_database=True)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM SeedByYear WHERE Year = %s", (int(year),))
+        conn.commit()
+    except Error as e:
+        conn.rollback()
+        raise RuntimeError(f"replaceSeedsByYear failed during delete: {e}") from e
+    finally:
+        cursor.close()
+        conn.close()
 
+    upsertSeedsByYear(seed_rows, year)
+
+
+def fixTeamReferences(year: int) -> dict:
+    """Reconcile missing ESPN references for teams seeded in *year*.
+
+    Returns a summary dict with keys:
+        matched, skipped_existing, unmatched, ambiguous,
+        unmatched_rows, ambiguous_rows
+    """
+    from scraping.espnConnect import ESPNConnect
+
+    conn = getConnection(include_database=True)
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            """
+            SELECT t.TeamID, t.KenPomName, t.EspnName, t.EspnID
+            FROM SeedByYear s
+            JOIN MBBTeams t ON t.TeamID = s.TeamID
+            WHERE s.Year = %s
+            """,
+            (int(year),),
+        )
+        seeded_teams = cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+    client = ESPNConnect()
+    espn_teams = client.fetch_team_info(limit=500)
+
+    espn_by_key: Dict[str, List[dict]] = {}
+    for row in espn_teams:
+        for name_source in (row.get("espn_name"), row.get("short_name"), row.get("display_name")):
+            key = _name_key(name_source)
+            if key:
+                espn_by_key.setdefault(key, []).append(row)
+
+    matched = 0
+    skipped_existing = 0
+    unmatched_rows: List[dict] = []
+    ambiguous_rows: List[dict] = []
+
+    mappings: List[dict] = []
+    for team_row in seeded_teams:
+        if team_row.get("EspnID"):
+            skipped_existing += 1
+            continue
+
+        key = _name_key(team_row.get("KenPomName"))
+        candidates = espn_by_key.get(key, [])
+
+        if len(candidates) == 1:
+            match = candidates[0]
+            mappings.append(
+                {
+                    "team_id": team_row["TeamID"],
+                    "kenpom_name": team_row.get("KenPomName"),
+                    "espn_name": match.get("espn_name"),
+                    "espn_id": str(match["espn_id"]) if match.get("espn_id") is not None else None,
+                    "espn_uid": match.get("espn_uid"),
+                    "ncaa_name": team_row.get("KenPomName"),
+                }
+            )
+            matched += 1
+        elif len(candidates) > 1:
+            ambiguous_rows.append({"team": team_row.get("KenPomName"), "candidates": candidates})
+        else:
+            unmatched_rows.append({"team": team_row.get("KenPomName")})
+
+    if mappings:
+        upsertTeamNameMappings(mappings)
+
+    return {
+        "matched": matched,
+        "skipped_existing": skipped_existing,
+        "unmatched": len(unmatched_rows),
+        "ambiguous": len(ambiguous_rows),
+        "unmatched_rows": unmatched_rows,
+        "ambiguous_rows": ambiguous_rows,
+    }
+
+
+def setupmbbteams(year: Optional[int] = None) -> dict:
     from datetime import datetime
 
     from scraping.espnConnect import ESPNConnect
