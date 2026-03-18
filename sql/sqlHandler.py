@@ -80,10 +80,10 @@ def ensure_teamstats_fk_targets_mbbteams():
         conn.close()
 
 
-def _normalize_name(value: Optional[str]) -> Optional[str]:
+def _normalize_name(value: Optional[object]) -> Optional[str]:
     if value is None:
         return None
-    cleaned = value.strip()
+    cleaned = str(value).strip()
     return cleaned if cleaned else None
 
 
