@@ -10,6 +10,8 @@ from typing import Dict, List, Optional
 import pandas as pd
 import streamlit as st
 
+from app_logic.export_brackets import build_brackets_zip, export_zip_filename
+from app_logic.import_brackets import prepare_bracket, validate_bracket
 from app_logic.objDef import team as Team
 from scraping.espnConnect import ESPNConnect
 from sql.sqlHandler import (
@@ -142,6 +144,7 @@ def _load_seed_rows_from_sql(year: int) -> List[dict]:
     return _sort_seed_rows(rows)
 
 
+@st.cache_data(ttl=300)
 def _load_espn_probabilities(year: int) -> List[dict]:
     try:
         client = ESPNConnect()
@@ -150,6 +153,7 @@ def _load_espn_probabilities(year: int) -> List[dict]:
         return []
 
 
+@st.cache_data(ttl=300)
 def _load_scoreboard_matchups(year: int) -> List[dict]:
     try:
         client = ESPNConnect()
@@ -158,19 +162,25 @@ def _load_scoreboard_matchups(year: int) -> List[dict]:
         return []
 
 
-def _load_predictor_probabilities_for_session(payload: dict, round_name: str) -> List[dict]:
+@st.cache_data(ttl=300)
+def _cached_predictor_probabilities(year: int, round_name: str, winners_json: str) -> List[dict]:
     try:
         client = ESPNConnect()
         return client.fetch_predictor_probabilities_for_session(
-            int(payload["year"]),
+            year,
             {
                 "target_round": round_name,
-                "winners": payload["simulation"].get("winners", {}),
-                "results": payload["simulation"].get("results", {}),
+                "winners": json.loads(winners_json),
             },
         )
     except Exception:
         return []
+
+
+def _load_predictor_probabilities_for_session(payload: dict, round_name: str) -> List[dict]:
+    winners = payload["simulation"].get("winners", {})
+    winners_json = json.dumps(winners, sort_keys=True)
+    return _cached_predictor_probabilities(int(payload["year"]), round_name, winners_json)
 
 
 def _entry_name_keys(entry) -> set[str]:
@@ -548,9 +558,10 @@ def _to_team_obj(entry: dict) -> Team:
     )
 
 
-def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List[dict]]:
+def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List[dict], int]:
     results = []
     winners = []
+    upset_count = 0
 
     for game in games:
         t1_entry = game["team1"]
@@ -571,6 +582,11 @@ def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List
             winner_entry, loser_entry = t2_entry, t1_entry
             winner_probs = team2_probs
 
+        winner_seed = int(winner_entry.get("seed") or 0)
+        loser_seed = int(loser_entry.get("seed") or 0)
+        if winner_seed > loser_seed > 0:
+            upset_count += 1
+
         results.append(
             {
                 "division": game.get("division", ""),
@@ -586,7 +602,7 @@ def _simulate_games(games: List[dict], round_num: int) -> tuple[List[dict], List
         )
         winners.append({"division": game.get("division", ""), "team": winner_entry})
 
-    return results, winners
+    return results, winners, upset_count
 
 
 def _build_next_games_from_winners(round_index: int, winners: List[dict]) -> List[dict]:
@@ -846,6 +862,7 @@ def _build_saved_bracket_snapshot(payload: dict, bracket_name: str) -> dict:
         "default_probability_source": sim.get("default_probability_source", "ESPN Probability"),
         "champion": _champion_name_from_results(sim.get("results", {})),
         "results": json.loads(json.dumps(sim.get("results", {}))),
+        "upset_counts": json.loads(json.dumps(sim.get("upset_counts", {}))),
         "seeding": json.loads(json.dumps(payload.get("seeding", {}).get(sim.get("source", "kenpom"), []))),
     }
 
@@ -857,6 +874,56 @@ def _save_current_bracket(payload: dict, bracket_name: str) -> dict:
     return snapshot
 
 
+def _process_uploaded_brackets(uploaded_files: list, payload: dict) -> None:
+    """Validate and import a list of uploaded JSON files into the session payload.
+
+    Each file is parsed, validated, and — if valid — appended to
+    ``payload["saved_brackets"]``.  Results are reported via
+    ``st.success`` / ``st.error``.  On completion the session is saved
+    and the import uploader state is cleared before a rerun.
+
+    Args:
+        uploaded_files: List of Streamlit ``UploadedFile`` objects.
+        payload: Current session payload dict (mutated in place).
+    """
+    existing_names = [b.get("name", "") for b in payload.get("saved_brackets", [])]
+    imported: list[dict] = []
+    errors: list[str] = []
+
+    for uploaded in uploaded_files:
+        filename = uploaded.name
+        try:
+            data = __import__("json").loads(uploaded.read())
+        except Exception:
+            errors.append(f"**{filename}**: not valid JSON.")
+            continue
+
+        validation_errors = validate_bracket(data)
+        if validation_errors:
+            bullet_list = "\n".join(f"- {e}" for e in validation_errors)
+            errors.append(f"**{filename}**:\n{bullet_list}")
+            continue
+
+        bracket = prepare_bracket(data, filename, existing_names)
+        existing_names.append(bracket["name"])  # keep in sync for multi-file dedup
+        imported.append(bracket)
+
+    if imported:
+        payload.setdefault("saved_brackets", []).extend(imported)
+        save_session_payload(payload)
+
+    if "show_import_uploader" in st.session_state:
+        del st.session_state["show_import_uploader"]
+
+    if imported:
+        count = len(imported)
+        st.success(f"Imported {count} bracket{'s' if count != 1 else ''} successfully.")
+    if errors:
+        st.error("The following file(s) could not be imported:\n\n" + "\n\n".join(errors))
+
+    st.rerun()
+
+
 def view_brackets_page(payload: dict):
     st.subheader("View Brackets")
     saved_brackets = list(reversed(payload.get("saved_brackets", [])))
@@ -865,17 +932,133 @@ def view_brackets_page(payload: dict):
         st.info("No saved brackets yet. Finish the Championship round in Run Simulation and save a bracket.")
         return
 
-    for bracket in saved_brackets:
-        champion = bracket.get("champion", "Unknown")
-        label = f"{bracket.get('name', 'Saved Bracket')} | {bracket.get('saved_at', '')} | Champion: {champion}"
-        with st.expander(label, expanded=False):
-            st.caption(
-                f"Year: {bracket.get('year')} | Source: {str(bracket.get('source', '')).title()} | Default Simulation Probability: {bracket.get('default_probability_source', '')}"
+    stats_tab, brackets_tab = st.tabs(["Stats", "Brackets"])
+
+    with stats_tab:
+        total_brackets = len(saved_brackets)
+
+        st.markdown("### Champions")
+        champion_counts: dict = {}
+        for b in saved_brackets:
+            champ = b.get("champion", "Unknown")
+            champion_counts[champ] = champion_counts.get(champ, 0) + 1
+
+        sorted_champs = sorted(champion_counts.items(), key=lambda x: x[1], reverse=True)
+        header_cols = st.columns([4, 1, 2])
+        header_cols[0].markdown("**Team**")
+        header_cols[1].markdown("**Brackets**")
+        header_cols[2].markdown("**Frequency**")
+        for champ, count in sorted_champs:
+            row = st.columns([4, 1, 2])
+            row[0].write(champ)
+            row[1].write(str(count))
+            row[2].write(f"{count / total_brackets * 100:.1f}%")
+
+        st.markdown("### Upsets")
+        bracket_upset_totals = [sum(b.get("upset_counts", {}).values()) for b in saved_brackets]
+        avg_upsets = sum(bracket_upset_totals) / len(bracket_upset_totals)
+        st.metric("Average upsets per bracket", f"{avg_upsets:.1f}")
+
+    with brackets_tab:
+        selected_ids = [
+            b["id"] for b in saved_brackets
+            if st.session_state.get(f"bracket_check_{b['id']}", False)
+        ]
+
+        pending_ids = st.session_state.get("pending_delete_ids")
+        if pending_ids:
+            count = len(pending_ids)
+            st.warning(f"Delete {count} bracket{'s' if count != 1 else ''}? This cannot be undone.")
+            confirm_col, cancel_col, _ = st.columns([1.5, 1.5, 7])
+            if confirm_col.button("Confirm Delete", type="primary", key="confirm_delete_btn"):
+                payload["saved_brackets"] = [
+                    b for b in payload["saved_brackets"] if b["id"] not in pending_ids
+                ]
+                save_session_payload(payload)
+                del st.session_state["pending_delete_ids"]
+                st.rerun()
+            if cancel_col.button("Cancel", key="cancel_delete_btn"):
+                del st.session_state["pending_delete_ids"]
+                st.rerun()
+
+        elif st.session_state.get("show_import_source"):
+            st.info("Select import source:")
+            src_cols = st.columns([2, 2, 6])
+            if src_cols[0].button("📂 Local JSON", key="import_source_local_btn"):
+                del st.session_state["show_import_source"]
+                st.session_state["show_import_uploader"] = True
+                st.rerun()
+            if src_cols[1].button("Cancel", key="import_source_cancel_btn"):
+                del st.session_state["show_import_source"]
+                st.rerun()
+
+        elif st.session_state.get("show_import_uploader"):
+            up_cols = st.columns([6, 2])
+            uploaded = up_cols[0].file_uploader(
+                "",
+                type=["json"],
+                accept_multiple_files=True,
+                key="import_file_uploader",
+                label_visibility="collapsed",
             )
-            results_by_round = bracket.get("results", {})
-            for round_name in ROUND_NAMES:
-                st.markdown(f"**{round_name}**")
-                _render_games_from_results(results_by_round.get(round_name, []), use_expanders=False)
+            if up_cols[1].button("Cancel", key="import_uploader_cancel_btn"):
+                del st.session_state["show_import_uploader"]
+                st.rerun()
+            if uploaded:
+                _process_uploaded_brackets(uploaded, payload)
+
+        else:
+            if selected_ids:
+                selected_brackets = [b for b in saved_brackets if b["id"] in selected_ids]
+                zip_bytes = build_brackets_zip(selected_brackets)
+                zip_name = export_zip_filename(len(selected_brackets))
+            else:
+                zip_bytes = b""
+                zip_name = "brackets_export.zip"
+
+            action_cols = st.columns([1.5, 1.5, 1.5, 5.5])
+            with action_cols[0]:
+                import_clicked = st.button("Import Bracket", key="import_bracket_btn")
+            with action_cols[1]:
+                delete_clicked = st.button(
+                    "Delete Selected",
+                    disabled=len(selected_ids) == 0,
+                    type="primary",
+                    key="delete_brackets_btn",
+                )
+            with action_cols[2]:
+                st.download_button(
+                    label="Export",
+                    data=zip_bytes,
+                    file_name=zip_name,
+                    mime="application/zip",
+                    disabled=len(selected_ids) == 0,
+                    key="export_brackets_btn",
+                )
+            if import_clicked:
+                st.session_state["show_import_source"] = True
+                st.rerun()
+            if delete_clicked:
+                st.session_state["pending_delete_ids"] = selected_ids
+                st.rerun()
+
+        for bracket in saved_brackets:
+            champion = bracket.get("champion", "Unknown")
+            total_upsets = sum(bracket.get("upset_counts", {}).values())
+            upset_str = f" | Upsets: {total_upsets}" if bracket.get("upset_counts") else ""
+            label = f"{bracket.get('name', 'Saved Bracket')} | {bracket.get('saved_at', '')} | Champion: {champion}{upset_str}"
+            check_col, expand_col = st.columns([0.05, 0.95])
+            with check_col:
+                st.checkbox("", key=f"bracket_check_{bracket['id']}", label_visibility="collapsed")
+            with expand_col:
+                with st.expander(label, expanded=False):
+                    st.caption(
+                        f"Year: {bracket.get('year')} | Source: {str(bracket.get('source', '')).title()} | Default Simulation Probability: {bracket.get('default_probability_source', '')}"
+                    )
+                    results_by_round = bracket.get("results", {})
+                    for round_name in ROUND_NAMES:
+                        st.markdown(f"**{round_name}**")
+                        _render_games_from_results(results_by_round.get(round_name, []), use_expanders=False)
 
 
 def view_seeding_page(payload: dict):
@@ -1008,6 +1191,14 @@ def run_simulation_page(payload: dict):
         st.rerun()
 
     completed = int(payload["simulation"].get("completed_rounds", 0))
+
+    upset_counts = payload["simulation"].get("upset_counts", {})
+    st.markdown("**Upsets by Round**")
+    upset_cols = st.columns(len(ROUND_NAMES))
+    for i, round_name in enumerate(ROUND_NAMES):
+        count = upset_counts.get(round_name)
+        upset_cols[i].metric(round_name, count if count is not None else "—")
+
     tabs = st.tabs(ROUND_NAMES)
 
     for i, round_name in enumerate(ROUND_NAMES):
@@ -1084,9 +1275,10 @@ def run_simulation_page(payload: dict):
                 )
 
             if calculate_clicked:
-                results, winners = _simulate_games(calc_games, i + 1)
+                results, winners, upset_count = _simulate_games(calc_games, i + 1)
                 payload["simulation"].setdefault("results", {})[round_name] = results
                 payload["simulation"].setdefault("winners", {})[round_name] = winners
+                payload["simulation"].setdefault("upset_counts", {})[round_name] = upset_count
                 payload["simulation"]["completed_rounds"] = min(6, completed + 1)
                 save_session_payload(payload)
                 st.rerun()
