@@ -5,3 +5,4 @@ session_data/
 .vs/
 __pycache__/
 .pytest_cache/
+.pyc
