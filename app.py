@@ -10,6 +10,8 @@ from typing import Dict, List, Optional
 import pandas as pd
 import streamlit as st
 
+from app_logic.export_brackets import build_brackets_zip, export_zip_filename
+from app_logic.import_brackets import prepare_bracket, validate_bracket
 from app_logic.objDef import team as Team
 from scraping.espnConnect import ESPNConnect
 from sql.sqlHandler import (
@@ -872,6 +874,56 @@ def _save_current_bracket(payload: dict, bracket_name: str) -> dict:
     return snapshot
 
 
+def _process_uploaded_brackets(uploaded_files: list, payload: dict) -> None:
+    """Validate and import a list of uploaded JSON files into the session payload.
+
+    Each file is parsed, validated, and — if valid — appended to
+    ``payload["saved_brackets"]``.  Results are reported via
+    ``st.success`` / ``st.error``.  On completion the session is saved
+    and the import uploader state is cleared before a rerun.
+
+    Args:
+        uploaded_files: List of Streamlit ``UploadedFile`` objects.
+        payload: Current session payload dict (mutated in place).
+    """
+    existing_names = [b.get("name", "") for b in payload.get("saved_brackets", [])]
+    imported: list[dict] = []
+    errors: list[str] = []
+
+    for uploaded in uploaded_files:
+        filename = uploaded.name
+        try:
+            data = __import__("json").loads(uploaded.read())
+        except Exception:
+            errors.append(f"**{filename}**: not valid JSON.")
+            continue
+
+        validation_errors = validate_bracket(data)
+        if validation_errors:
+            bullet_list = "\n".join(f"- {e}" for e in validation_errors)
+            errors.append(f"**{filename}**:\n{bullet_list}")
+            continue
+
+        bracket = prepare_bracket(data, filename, existing_names)
+        existing_names.append(bracket["name"])  # keep in sync for multi-file dedup
+        imported.append(bracket)
+
+    if imported:
+        payload.setdefault("saved_brackets", []).extend(imported)
+        save_session_payload(payload)
+
+    if "show_import_uploader" in st.session_state:
+        del st.session_state["show_import_uploader"]
+
+    if imported:
+        count = len(imported)
+        st.success(f"Imported {count} bracket{'s' if count != 1 else ''} successfully.")
+    if errors:
+        st.error("The following file(s) could not be imported:\n\n" + "\n\n".join(errors))
+
+    st.rerun()
+
+
 def view_brackets_page(payload: dict):
     st.subheader("View Brackets")
     saved_brackets = list(reversed(payload.get("saved_brackets", [])))
@@ -908,19 +960,105 @@ def view_brackets_page(payload: dict):
         st.metric("Average upsets per bracket", f"{avg_upsets:.1f}")
 
     with brackets_tab:
+        selected_ids = [
+            b["id"] for b in saved_brackets
+            if st.session_state.get(f"bracket_check_{b['id']}", False)
+        ]
+
+        pending_ids = st.session_state.get("pending_delete_ids")
+        if pending_ids:
+            count = len(pending_ids)
+            st.warning(f"Delete {count} bracket{'s' if count != 1 else ''}? This cannot be undone.")
+            confirm_col, cancel_col, _ = st.columns([1.5, 1.5, 7])
+            if confirm_col.button("Confirm Delete", type="primary", key="confirm_delete_btn"):
+                payload["saved_brackets"] = [
+                    b for b in payload["saved_brackets"] if b["id"] not in pending_ids
+                ]
+                save_session_payload(payload)
+                del st.session_state["pending_delete_ids"]
+                st.rerun()
+            if cancel_col.button("Cancel", key="cancel_delete_btn"):
+                del st.session_state["pending_delete_ids"]
+                st.rerun()
+
+        elif st.session_state.get("show_import_source"):
+            st.info("Select import source:")
+            src_cols = st.columns([2, 2, 6])
+            if src_cols[0].button("📂 Local JSON", key="import_source_local_btn"):
+                del st.session_state["show_import_source"]
+                st.session_state["show_import_uploader"] = True
+                st.rerun()
+            if src_cols[1].button("Cancel", key="import_source_cancel_btn"):
+                del st.session_state["show_import_source"]
+                st.rerun()
+
+        elif st.session_state.get("show_import_uploader"):
+            up_cols = st.columns([6, 2])
+            uploaded = up_cols[0].file_uploader(
+                "",
+                type=["json"],
+                accept_multiple_files=True,
+                key="import_file_uploader",
+                label_visibility="collapsed",
+            )
+            if up_cols[1].button("Cancel", key="import_uploader_cancel_btn"):
+                del st.session_state["show_import_uploader"]
+                st.rerun()
+            if uploaded:
+                _process_uploaded_brackets(uploaded, payload)
+
+        else:
+            if selected_ids:
+                selected_brackets = [b for b in saved_brackets if b["id"] in selected_ids]
+                zip_bytes = build_brackets_zip(selected_brackets)
+                zip_name = export_zip_filename(len(selected_brackets))
+            else:
+                zip_bytes = b""
+                zip_name = "brackets_export.zip"
+
+            action_cols = st.columns([1.5, 1.5, 1.5, 5.5])
+            with action_cols[0]:
+                import_clicked = st.button("Import Bracket", key="import_bracket_btn")
+            with action_cols[1]:
+                delete_clicked = st.button(
+                    "Delete Selected",
+                    disabled=len(selected_ids) == 0,
+                    type="primary",
+                    key="delete_brackets_btn",
+                )
+            with action_cols[2]:
+                st.download_button(
+                    label="Export",
+                    data=zip_bytes,
+                    file_name=zip_name,
+                    mime="application/zip",
+                    disabled=len(selected_ids) == 0,
+                    key="export_brackets_btn",
+                )
+            if import_clicked:
+                st.session_state["show_import_source"] = True
+                st.rerun()
+            if delete_clicked:
+                st.session_state["pending_delete_ids"] = selected_ids
+                st.rerun()
+
         for bracket in saved_brackets:
             champion = bracket.get("champion", "Unknown")
             total_upsets = sum(bracket.get("upset_counts", {}).values())
             upset_str = f" | Upsets: {total_upsets}" if bracket.get("upset_counts") else ""
             label = f"{bracket.get('name', 'Saved Bracket')} | {bracket.get('saved_at', '')} | Champion: {champion}{upset_str}"
-            with st.expander(label, expanded=False):
-                st.caption(
-                    f"Year: {bracket.get('year')} | Source: {str(bracket.get('source', '')).title()} | Default Simulation Probability: {bracket.get('default_probability_source', '')}"
-                )
-                results_by_round = bracket.get("results", {})
-                for round_name in ROUND_NAMES:
-                    st.markdown(f"**{round_name}**")
-                    _render_games_from_results(results_by_round.get(round_name, []), use_expanders=False)
+            check_col, expand_col = st.columns([0.05, 0.95])
+            with check_col:
+                st.checkbox("", key=f"bracket_check_{bracket['id']}", label_visibility="collapsed")
+            with expand_col:
+                with st.expander(label, expanded=False):
+                    st.caption(
+                        f"Year: {bracket.get('year')} | Source: {str(bracket.get('source', '')).title()} | Default Simulation Probability: {bracket.get('default_probability_source', '')}"
+                    )
+                    results_by_round = bracket.get("results", {})
+                    for round_name in ROUND_NAMES:
+                        st.markdown(f"**{round_name}**")
+                        _render_games_from_results(results_by_round.get(round_name, []), use_expanders=False)
 
 
 def view_seeding_page(payload: dict):
