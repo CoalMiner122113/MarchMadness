@@ -390,9 +390,11 @@ def upsertSeedsByYear(seed_rows: Iterable[dict], year: int):
             if row.get("division_id") is not None:
                 division_id = int(row["division_id"])
             else:
-                division_name = _normalize_name(row.get("division_name"))
+                division_name = _normalize_name(
+                    row.get("division_name") or row.get("division")
+                )
                 if not division_name:
-                    raise ValueError("Seed row must include division_id or division_name.")
+                    raise ValueError("Seed row must include division_id, division_name, or division.")
                 division_id = DIVISION_NAME_TO_ID.get(division_name.lower())
                 if division_id is None:
                     cursor.execute(

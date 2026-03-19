@@ -399,3 +399,32 @@ class TestLookupEspnMatchup:
         assert result["available"] is False
         assert abs(result["team1_probability"] - 70.0) < 0.01
         assert abs(result["team2_probability"] - 30.0) < 0.01
+
+
+
+class TestBuildProbabilityRows:
+    def test_missing_espn_probability_falls_back_to_kenpom(self, app_helpers):
+        payload = {"year": 2026, "simulation": {"round_inputs": {}}}
+        pending_games = [{
+            "division": "South",
+            "team1": {"team_name": "Alpha", "seed": 1, "adj_em": 30.0, "sos": 10.0, "luck": 0.0},
+            "team2": {"team_name": "Beta", "seed": 16, "adj_em": 5.0, "sos": -2.0, "luck": 0.0},
+        }]
+
+        rows = app_helpers._build_probability_rows(
+            payload,
+            "Round of 64",
+            pending_games,
+            "ESPN Probability",
+            prob_rows=[],
+            raw_rows=[],
+        )
+
+        assert len(rows) == 2
+        assert rows[0]["espn_available"] is False
+        assert rows[0]["espn_probability"] == rows[0]["kenpom_probability"]
+        assert rows[1]["espn_probability"] == rows[1]["kenpom_probability"]
+        assert rows[0]["moneyline"] == -100
+        assert rows[1]["moneyline"] == -100
+        assert rows[0]["simulation_probability"] == rows[0]["kenpom_probability"]
+        assert rows[1]["simulation_probability"] == rows[1]["kenpom_probability"]

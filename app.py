@@ -489,7 +489,12 @@ def _build_probability_rows(
             row_key = f"{matchup_key}|{_name_key(team_name)}"
             existing_row = existing_map.get(row_key, {})
             kenpom_prob = _probability_or_default(_lookup_kenpom_probability(team_entry, opponent_entry))
-            espn_prob = _probability_or_default(espn_match.get(f"team{team_index}_probability"))
+            espn_prob = _probability_or_default(
+                espn_match.get(f"team{team_index}_probability"),
+                kenpom_prob,
+            )
+            if not espn_match.get("available"):
+                espn_prob = kenpom_prob
             moneyline = _moneyline_or_default(scoreboard_match.get(f"team{team_index}_moneyline"))
             default_sim = espn_prob if default_source == "ESPN Probability" else kenpom_prob
 
